@@ -1,24 +1,51 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>{% block title %}Welcome!{% endblock %}</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
-        {% block stylesheets %}
-        {% endblock %}
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{% block title %}Shan's Guitar Admin{% endblock %}</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎸</text></svg>">
+
+        {# Fonts: Fraunces (headings) and Outfit (text), the same as the store website #}
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,700;1,9..144,700&family=Outfit:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+
+        {% block stylesheets %}{% endblock %}
 
         {% block javascripts %}
             {% block importmap %}{{ importmap('app') }}{% endblock %}
         {% endblock %}
-
-        {% set frankenphp_hot_reload = app.request.server.get('FRANKENPHP_HOT_RELOAD') %}
-        {% if frankenphp_hot_reload %}
-        <meta name="frankenphp-hot-reload:url" content="{{ frankenphp_hot_reload }}">
-        <script src="https://cdn.jsdelivr.net/npm/idiomorph"></script>
-        <script src="https://cdn.jsdelivr.net/npm/frankenphp-hot-reload/+esm" type="module"></script>
-        {% endif %}
     </head>
-    <body>
-        {% block body %}{% endblock %}
+    <body class="bg-sand font-sans text-ebony antialiased">
+        {#
+            The "layout" block holds the admin frame (sidebar + page header).
+            Pages that must NOT show the sidebar, like the login page later,
+            replace this whole block.
+        #}
+        {% block layout %}
+            <div class="min-h-screen lg:flex">
+                {% include 'partials/sidebar.html.twig' %}
+
+                <main class="min-w-0 flex-1 px-5 py-6 sm:px-8 lg:px-10 lg:py-8">
+                    <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                            <h1 class="font-display text-3xl font-bold leading-tight sm:text-4xl">
+                                {% block page_title %}Dashboard{% endblock %}
+                            </h1>
+                            <p class="mt-1 text-sm text-ebony/60">{% block page_subtitle %}{% endblock %}</p>
+                        </div>
+
+                        {# Signed-in admin. Sample name for now; it becomes the real user after the login step. #}
+                        <div class="flex items-center gap-3 rounded-full bg-parchment py-1.5 pl-1.5 pr-4 ring-1 ring-ebony/10">
+                            <span class="grid h-8 w-8 place-items-center rounded-full bg-honey font-display text-sm font-bold text-white">S</span>
+                            <span class="text-sm font-semibold">Admin Shan</span>
+                        </div>
+                    </header>
+
+                    {% block body %}{% endblock %}
+                </main>
+            </div>
+        {% endblock %}
     </body>
 </html>

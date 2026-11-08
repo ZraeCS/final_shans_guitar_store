@@ -1,20 +1,149 @@
 {% extends 'base.html.twig' %}
+{% import 'partials/icons.html.twig' as icons %}
 
-{% block title %}Hello HomeController!{% endblock %}
+{% block title %}Dashboard · Shan's Guitar Admin{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Store overview for {{ 'now'|date('l, F j, Y') }}{% endblock %}
 
 {% block body %}
-<style>
-    .example-wrapper { margin: 1em auto; max-width: 800px; width: 95%; font: 18px/1.5 sans-serif; }
-    .example-wrapper code { background: #F5F5F5; padding: 2px 6px; }
-</style>
+    {# ---------- Lookup tables used by the orders table ---------- #}
+    {% set method_label = { cod: 'COD', pickup_pay: 'Pay on pickup', gcash: 'GCash' } %}
+    {% set status_style = {
+        pending:   'bg-honey/15 text-honey-deep',
+        confirmed: 'bg-green-100 text-green-800',
+        shipped:   'bg-sky-100 text-sky-800',
+        delivered: 'bg-ebony text-parchment',
+        cancelled: 'bg-red-100 text-red-800',
+    } %}
 
-<div class="example-wrapper">
-    <h1>Hello {{ controller_name }}! ✅</h1>
+    {% set btn = 'inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-honey' %}
+    {% set btn_primary = btn ~ ' bg-honey text-white hover:bg-honey-deep' %}
+    {% set btn_dark = btn ~ ' bg-ebony text-parchment hover:bg-ebony/85' %}
+    {% set btn_outline = btn ~ ' ring-1 ring-ebony/20 hover:bg-sand' %}
 
-    This friendly message is coming from:
-    <ul>
-        <li>Your controller at <code>C:/shans_guitar1/shans_guitar/src/Controller/HomeController.php</code></li>
-        <li>Your template at <code>C:/shans_guitar1/shans_guitar/templates/home/index.html.twig</code></li>
-    </ul>
-</div>
+    {# ---------- Stat cards ---------- #}
+    <section aria-label="Today at a glance" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {# Today's sales is the headline number, so it gets the dark card #}
+        <div class="rounded-2xl bg-ebony p-5 text-parchment">
+            <p class="text-sm font-semibold text-parchment/70">Today’s sales</p>
+            <p class="mt-2 font-display text-4xl font-bold">₱{{ today_sales|number_format(2) }}</p>
+            {% if sales_change is not null %}
+                <p class="mt-2 text-sm font-semibold {{ sales_change >= 0 ? 'text-green-300' : 'text-red-300' }}">
+                    {{ sales_change >= 0 ? '▲' : '▼' }} {{ sales_change|abs }}% vs yesterday
+                </p>
+            {% else %}
+                <p class="mt-2 text-sm text-parchment/60">No sales yesterday to compare</p>
+            {% endif %}
+        </div>
+
+        <div class="rounded-2xl bg-parchment p-5 ring-1 ring-ebony/10">
+            <p class="text-sm font-semibold text-ebony/60">Orders today</p>
+            <p class="mt-2 font-display text-4xl font-bold">{{ orders_today }}</p>
+            <p class="mt-2 text-sm text-ebony/60">{{ orders_awaiting }} awaiting confirmation</p>
+        </div>
+
+        <div class="rounded-2xl bg-parchment p-5 ring-1 ring-ebony/10">
+            <p class="text-sm font-semibold text-ebony/60">GCash to verify</p>
+            <p class="mt-2 font-display text-4xl font-bold text-honey-deep">{{ gcash_to_verify }}</p>
+            <p class="mt-2 text-sm text-ebony/60">Reference numbers waiting for a check</p>
+        </div>
+
+        <div class="rounded-2xl bg-parchment p-5 ring-1 ring-ebony/10">
+            <p class="text-sm font-semibold text-ebony/60">Low-stock items</p>
+            <p class="mt-2 font-display text-4xl font-bold {{ low_stock|length > 0 ? 'text-red-700' : '' }}">{{ low_stock|length }}</p>
+            <p class="mt-2 text-sm text-ebony/60">3 units or fewer left</p>
+        </div>
+    </section>
+
+    {# ---------- Restock alert (only shows when something is low) ---------- #}
+    {% if low_stock is not empty %}
+        <div role="status" class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-honey/40 bg-honey/10 px-5 py-3 text-sm">
+            <span class="text-honey-deep">{{ icons.icon('alert') }}</span>
+            <p>
+                <span class="font-bold">Restock soon:</span>
+                {% for item in low_stock %}
+                    {{ item.name }} ({{ item.stock }} left){{ not loop.last ? ',' }}
+                {% endfor %}
+            </p>
+            {# Becomes path('app_product_index') when the Products page exists #}
+            <a href="#" class="ml-auto font-bold text-honey-deep underline-offset-4 hover:underline">Manage stock</a>
+        </div>
+    {% endif %}
+
+    {# ---------- Recent orders ---------- #}
+    <section class="mt-6 rounded-2xl bg-parchment ring-1 ring-ebony/10">
+        <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-5">
+            <h2 class="font-display text-xl font-bold">Recent orders</h2>
+            {# Becomes path('app_order_index') when the Orders page exists #}
+            <a href="#" class="{{ btn_outline }}">View all orders</a>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[56rem] text-left text-sm">
+                <thead class="border-y border-ebony/10 text-xs font-semibold text-ebony/55">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Order</th>
+                        <th scope="col" class="px-3 py-3">Customer</th>
+                        <th scope="col" class="px-3 py-3">Items</th>
+                        <th scope="col" class="px-3 py-3 text-right">Total</th>
+                        <th scope="col" class="px-3 py-3">Payment</th>
+                        <th scope="col" class="px-3 py-3">Status</th>
+                        <th scope="col" class="px-6 py-3 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-ebony/10">
+                    {% for order in recent_orders %}
+                        <tr class="align-top">
+                            <td class="px-6 py-4">
+                                <p class="font-bold">#{{ order.id }}</p>
+                                <p class="text-xs text-ebony/55">{{ order.created_at|date('M j, g:i A') }}</p>
+                            </td>
+                            <td class="px-3 py-4 font-medium">{{ order.customer }}</td>
+                            <td class="px-3 py-4 text-ebony/75">{{ order.items }}</td>
+                            <td class="px-3 py-4 text-right font-semibold tabular-nums">₱{{ order.total|number_format(2) }}</td>
+                            <td class="px-3 py-4">
+                                <p class="font-medium">{{ method_label[order.method] }}</p>
+                                {% if order.method == 'gcash' %}
+                                    <p class="text-xs text-ebony/55">Ref {{ order.ref }}</p>
+                                    <span class="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold {{ order.verified ? 'bg-green-100 text-green-800' : 'bg-honey/15 text-honey-deep' }}">
+                                        {{ order.verified ? 'Verified' : 'Unverified' }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-3 py-4">
+                                <span class="inline-block rounded-full px-2.5 py-1 text-xs font-bold {{ status_style[order.status] }}">
+                                    {{ order.status|capitalize }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                {# The buttons start working in the Orders / GCash step #}
+                                <div class="flex justify-end gap-2">
+                                    {% if order.status == 'pending' and order.method == 'gcash' and not order.verified %}
+                                        <button type="button" class="{{ btn_primary }}">Verify GCash</button>
+                                        <button type="button" class="{{ btn_outline }}">Details</button>
+                                    {% elseif order.status == 'pending' %}
+                                        <button type="button" class="{{ btn_primary }}">Confirm</button>
+                                        <button type="button" class="{{ btn_outline }}">Details</button>
+                                    {% elseif order.status == 'confirmed' %}
+                                        <button type="button" class="{{ btn_dark }}">Mark shipped</button>
+                                    {% elseif order.status == 'shipped' %}
+                                        <button type="button" class="{{ btn_dark }}">Mark delivered</button>
+                                    {% else %}
+                                        <button type="button" class="{{ btn_outline }}">Details</button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="px-6 py-10 text-center text-ebony/60">
+                                No orders yet. New orders from the store will appear here.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
 {% endblock %}

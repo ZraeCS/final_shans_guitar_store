@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
-body {
-    background-color: skyblue;
+/*
+ * Shan's Guitar design tokens.
+ * Each color below becomes Tailwind classes automatically:
+ *   --color-honey  ->  bg-honey, text-honey, border-honey, ring-honey ...
+ */
+@theme {
+  --color-parchment: #FDF3E0;   /* cream: cards, light surfaces */
+  --color-sand: #F5E6C8;        /* page background */
+  --color-honey: #C4873A;       /* amber: buttons, accents */
+  --color-honey-deep: #8B5A1E;  /* darker amber: small text on light backgrounds (easier to read) */
+  --color-ebony: #221004;       /* dark brown: sidebar, main text */
+
+  --font-display: "Fraunces", Georgia, serif;     /* headings and big numbers */
+  --font-sans: "Outfit", system-ui, sans-serif;    /* everything else */
 }

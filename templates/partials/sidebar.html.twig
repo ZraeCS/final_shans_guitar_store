@@ -1,0 +1,61 @@
+{% import 'partials/icons.html.twig' as icons %}
+
+{# Which page are we on? Used to highlight the active link. #}
+{% set current = app.request.attributes.get('_route') %}
+
+{#
+    Sidebar links.
+    route: null  = the page doesn't exist yet (link goes nowhere for now).
+    badge        = small number bubble. These are SAMPLE numbers;
+                   they become live counts after the database step.
+#}
+{% set nav = [
+    { label: 'Dashboard',        route: 'app_home', icon: 'dashboard' },
+    { label: 'Products & Stock', route: null,       icon: 'package' },
+    { label: 'Orders',           route: null,       icon: 'orders', badge: 3 },
+    { label: 'GCash Payments',   route: null,       icon: 'wallet', badge: 2 },
+    { label: 'Sales Reports',    route: null,       icon: 'chart' },
+    { label: 'Customers',        route: null,       icon: 'users' },
+] %}
+
+{% set link_base = 'flex shrink-0 items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-honey' %}
+
+<aside class="bg-ebony text-parchment lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col">
+    {# Logo: "shan's" bold italic with an amber 's, "guitar" light #}
+    <div class="px-6 pb-4 pt-6 lg:pb-8 lg:pt-8">
+        <a href="{{ path('app_home') }}" class="font-display text-2xl leading-none text-parchment focus-visible:outline-2 focus-visible:outline-honey">
+            <span class="font-bold italic">shan<span class="text-honey">’s</span></span>
+            <span class="font-light">guitar</span>
+        </a>
+        <p class="mt-1.5 text-xs text-parchment/50">Admin panel</p>
+    </div>
+
+    <nav aria-label="Admin" class="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-1 lg:flex-col lg:overflow-visible lg:pb-0">
+        {% for item in nav %}
+            {% set active = item.route and current == item.route %}
+            <a href="{{ item.route ? path(item.route) : '#' }}"
+               {% if active %}aria-current="page"{% endif %}
+               class="{{ link_base }} {{ active ? 'bg-honey text-white' : 'text-parchment/75 hover:bg-white/10 hover:text-parchment' }}">
+                {{ icons.icon(item.icon) }}
+                <span class="whitespace-nowrap">{{ item.label }}</span>
+                {% if item.badge is defined and item.badge > 0 %}
+                    <span class="ml-auto grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-bold {{ active ? 'bg-white text-honey-deep' : 'bg-honey text-white' }}">
+                        {{ item.badge }}
+                    </span>
+                {% endif %}
+            </a>
+        {% endfor %}
+    </nav>
+
+    <div class="flex gap-1 border-t border-white/10 px-3 py-3 lg:flex-col lg:py-4">
+        <a href="#" class="{{ link_base }} text-parchment/75 hover:bg-white/10 hover:text-parchment">
+            {{ icons.icon('settings') }}
+            <span>Settings</span>
+        </a>
+        {# Becomes path('app_logout') after the login step #}
+        <a href="#" class="{{ link_base }} text-parchment/75 hover:bg-white/10 hover:text-parchment">
+            {{ icons.icon('logout') }}
+            <span>Log out</span>
+        </a>
+    </div>
+</aside>
