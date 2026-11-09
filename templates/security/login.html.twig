@@ -46,10 +46,14 @@
                    autocomplete="current-password" required
                    class="mt-1.5 block w-full rounded-xl border border-ebony/15 bg-sand/40 px-4 py-2.5 text-sm outline-none transition focus:border-honey focus:ring-2 focus:ring-honey/30">
 
-            <label class="mt-4 flex items-center gap-2 text-sm text-ebony/75">
-                <input type="checkbox" name="_remember_me" class="h-4 w-4 accent-honey">
-                Keep me signed in for a week
-            </label>
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm">
+                <label class="flex items-center gap-2 text-ebony/75">
+                    <input type="checkbox" name="_remember_me" class="h-4 w-4 accent-honey">
+                    Keep me signed in for a week
+                </label>
+                {# Staff share the users table with customers, so the store's reset page works for them too #}
+                <a href="{{ store_url('auth/forgot.php') }}" class="font-semibold text-honey-deep underline-offset-2 hover:underline">Forgot password?</a>
+            </div>
 
             {# Security token: proves the form was sent from this page #}
             <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('authenticate') }}">
