@@ -1,0 +1,90 @@
+{% extends 'base.html.twig' %}
+{% import 'partials/icons.html.twig' as icons %}
+{% import 'partials/orders.html.twig' as ui %}
+
+{% block title %}Orders · Shan's Guitar Admin{% endblock %}
+
+{% block page_title %}Orders{% endblock %}
+{% block page_subtitle %}{{ counts|reduce((sum, n) => sum + n, 0) }} orders in total · {{ counts.pending }} waiting for confirmation{% endblock %}
+
+{% block body %}
+    {% set chip = 'inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors' %}
+
+    <section class="rounded-2xl bg-parchment ring-1 ring-ebony/10">
+        {# ---------- Status filter + search ---------- #}
+        <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-5">
+            <nav aria-label="Filter by status" class="flex flex-wrap gap-2">
+                <a href="{{ path('app_order_index', query ? {q: query} : {}) }}"
+                   class="{{ chip }} {{ current_status is null ? 'bg-honey text-white' : 'ring-1 ring-ebony/15 hover:bg-sand' }}">
+                    All <span class="opacity-70">{{ counts|reduce((sum, n) => sum + n, 0) }}</span>
+                </a>
+                {% for s in statuses %}
+                    <a href="{{ path('app_order_index', {status: s.value}|merge(query ? {q: query} : {})) }}"
+                       {% if current_status == s %}aria-current="page"{% endif %}
+                       class="{{ chip }} {{ current_status == s ? 'bg-honey text-white' : 'ring-1 ring-ebony/15 hover:bg-sand' }}">
+                        {{ s.label }} <span class="opacity-70">{{ counts[s.value] }}</span>
+                    </a>
+                {% endfor %}
+            </nav>
+
+            <form method="get" action="{{ path('app_order_index') }}" class="flex items-center gap-2">
+                {% if current_status %}<input type="hidden" name="status" value="{{ current_status.value }}">{% endif %}
+                <label class="relative">
+                    <span class="sr-only">Search orders</span>
+                    <span class="pointer-events-none absolute inset-y-0 left-3 grid place-items-center text-ebony/45">{{ icons.icon('search', 'h-4 w-4') }}</span>
+                    <input type="search" name="q" value="{{ query }}" placeholder="Order # or customer"
+                           class="w-56 rounded-full border border-ebony/15 bg-white/70 py-2 pl-9 pr-4 text-sm outline-none focus:border-honey focus:ring-2 focus:ring-honey/30">
+                </label>
+                {% if query %}
+                    <a href="{{ path('app_order_index', current_status ? {status: current_status.value} : {}) }}" class="text-sm font-semibold text-honey-deep underline-offset-4 hover:underline">Clear</a>
+                {% endif %}
+            </form>
+        </div>
+
+        {# ---------- Orders table ---------- #}
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[60rem] text-left text-sm">
+                <thead class="border-y border-ebony/10 text-xs font-semibold text-ebony/55">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Order</th>
+                        <th scope="col" class="px-3 py-3">Customer</th>
+                        <th scope="col" class="px-3 py-3">Items</th>
+                        <th scope="col" class="px-3 py-3 text-right">Total</th>
+                        <th scope="col" class="px-3 py-3">Payment</th>
+                        <th scope="col" class="px-3 py-3">Status</th>
+                        <th scope="col" class="px-6 py-3 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-ebony/10">
+                    {% for order in orders %}
+                        <tr class="align-top">
+                            <td class="px-6 py-4">
+                                <a href="{{ path('app_order_show', {id: order.id}) }}" class="font-bold underline-offset-4 hover:underline">#{{ order.id }}</a>
+                                <p class="text-xs text-ebony/55">{{ order.createdAt|date('M j, g:i A') }}</p>
+                            </td>
+                            <td class="px-3 py-4">
+                                <p class="font-medium">{{ order.customer.name }}</p>
+                                <p class="text-xs text-ebony/55">{{ order.fulfillment == 'pickup' ? 'Pickup' : 'Delivery to ' ~ order.city }}</p>
+                            </td>
+                            <td class="px-3 py-4 text-ebony/75">{{ ui.items_summary(order) }}</td>
+                            <td class="px-3 py-4 text-right font-semibold tabular-nums">₱{{ order.total|number_format(2) }}</td>
+                            <td class="px-3 py-4">{{ ui.payment(order) }}</td>
+                            <td class="px-3 py-4">{{ ui.status_badge(order.status) }}</td>
+                            <td class="px-6 py-4">{{ ui.actions(order, 'orders', current_status ? current_status.value : '') }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="px-6 py-10 text-center text-ebony/60">
+                                {% if query or current_status %}
+                                    No orders match this filter. <a href="{{ path('app_order_index') }}" class="font-semibold text-honey-deep underline">Show all orders</a>
+                                {% else %}
+                                    No orders yet. New orders from the store will appear here.
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+{% endblock %}

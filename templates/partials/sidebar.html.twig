@@ -12,8 +12,8 @@
 {% set nav = [
     { label: 'Dashboard',        route: 'app_home',          icon: 'dashboard', section: 'app_home' },
     { label: 'Products & Stock', route: 'app_product_index', icon: 'package',   section: 'app_product' },
-    { label: 'Orders',           route: null,       icon: 'orders', badge: pending_orders_count() },
-    { label: 'GCash Payments',   route: null,       icon: 'wallet', badge: gcash_to_verify_count() },
+    { label: 'Orders',           route: 'app_order_index',   icon: 'orders',    section: 'app_order',   badge: pending_orders_count() },
+    { label: 'GCash Payments',   route: 'app_gcash_index',   icon: 'wallet',    section: 'app_gcash',   badge: gcash_to_verify_count() },
     { label: 'Sales Reports',    route: null,       icon: 'chart' },
     { label: 'Customers',        route: null,       icon: 'users' },
 ] %}

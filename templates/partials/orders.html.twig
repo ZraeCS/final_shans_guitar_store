@@ -1,0 +1,93 @@
+{#
+    Small pieces used everywhere orders appear (dashboard, Orders page,
+    order details, GCash page). Use them like this:
+
+        {% import 'partials/orders.html.twig' as ui %}
+        {{ ui.status_badge(order.status) }}
+        {{ ui.payment(order) }}
+        {{ ui.actions(order, 'dashboard') }}
+#}
+
+{% macro status_badge(status) %}
+    {% set style = {
+        pending:   'bg-honey/15 text-honey-deep',
+        confirmed: 'bg-green-100 text-green-800',
+        shipped:   'bg-sky-100 text-sky-800',
+        delivered: 'bg-ebony text-parchment',
+        cancelled: 'bg-red-100 text-red-800',
+    } %}
+    <span class="inline-block rounded-full px-2.5 py-1 text-xs font-bold {{ style[status.value] }}">{{ status.label }}</span>
+{% endmacro %}
+
+{% macro payment(order) %}
+    <p class="font-medium">{{ order.paymentMethod.label }}</p>
+    {% if order.gcash %}
+        <p class="text-xs text-ebony/55">Ref {{ order.paymentRef ?? '—' }}</p>
+        <span class="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold {{ order.paymentVerified ? 'bg-green-100 text-green-800' : 'bg-honey/15 text-honey-deep' }}">
+            {{ order.paymentVerified ? 'Verified' : 'Unverified' }}
+        </span>
+    {% endif %}
+{% endmacro %}
+
+{#
+    The main next-step button for an order (+ Details).
+    back = which page to return to after the button: dashboard | orders | gcash | show
+#}
+{% macro actions(order, back, back_status = '') %}
+    {% set btn = 'inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-honey' %}
+    {% set btn_primary = btn ~ ' bg-honey text-white hover:bg-honey-deep' %}
+    {% set btn_dark = btn ~ ' bg-ebony text-parchment hover:bg-ebony/85' %}
+    {% set btn_outline = btn ~ ' ring-1 ring-ebony/20 hover:bg-sand' %}
+    {% set status = order.status.value %}
+
+    <div class="flex justify-end gap-2 whitespace-nowrap">
+        {% if order.needsGcashVerification %}
+            <form method="post" action="{{ path('app_order_verify_gcash', {id: order.id}) }}"
+                  onsubmit="return confirm('Verify order #{{ order.id }}?\n\nOnly continue if your GCash app shows ₱{{ order.total|number_format(2) }} received with reference {{ order.paymentRef|e('js') }}.');">
+                <input type="hidden" name="_token" value="{{ csrf_token('order' ~ order.id) }}">
+                <input type="hidden" name="back" value="{{ back }}">
+                <input type="hidden" name="back_status" value="{{ back_status }}">
+                <button type="submit" class="{{ btn_primary }}">Verify GCash</button>
+            </form>
+        {% elseif status in ['pending', 'confirmed', 'shipped'] %}
+            {% set next = {pending: ['confirmed', 'Confirm', btn_primary], confirmed: ['shipped', 'Mark shipped', btn_dark], shipped: ['delivered', 'Mark delivered', btn_dark]}[status] %}
+            <form method="post" action="{{ path('app_order_status', {id: order.id}) }}">
+                <input type="hidden" name="_token" value="{{ csrf_token('order' ~ order.id) }}">
+                <input type="hidden" name="status" value="{{ next[0] }}">
+                <input type="hidden" name="back" value="{{ back }}">
+                <input type="hidden" name="back_status" value="{{ back_status }}">
+                <button type="submit" class="{{ next[2] }}">{{ next[1] }}</button>
+            </form>
+        {% endif %}
+
+        {% if back != 'show' %}
+            <a href="{{ path('app_order_show', {id: order.id}) }}" class="{{ btn_outline }}">Details</a>
+        {% endif %}
+    </div>
+{% endmacro %}
+
+{# "Cancel order" / "Reject" button, with a warning first #}
+{% macro cancel_button(order, back, label = 'Cancel order') %}
+    <form method="post" action="{{ path('app_order_status', {id: order.id}) }}"
+          onsubmit="return confirm('{{ label }} #{{ order.id }}?\n\nThe order becomes Cancelled and its items go back into stock. This can’t be undone.');">
+        <input type="hidden" name="_token" value="{{ csrf_token('order' ~ order.id) }}">
+        <input type="hidden" name="status" value="cancelled">
+        <input type="hidden" name="back" value="{{ back }}">
+        <button type="submit" class="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold text-red-700 ring-1 ring-red-200 transition-colors hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400">
+            {{ label }}
+        </button>
+    </form>
+{% endmacro %}
+
+{# "Yamaha FG800 × 1" plus "and 2 more" #}
+{% macro items_summary(order) %}
+    {% set first_item = order.items.first %}
+    {% if first_item %}
+        {{ first_item.guitar.name }} × {{ first_item.quantity }}
+        {% if order.items|length > 1 %}
+            <span class="block text-xs text-ebony/55">and {{ order.items|length - 1 }} more</span>
+        {% endif %}
+    {% else %}
+        <span class="text-ebony/55">No items</span>
+    {% endif %}
+{% endmacro %}
