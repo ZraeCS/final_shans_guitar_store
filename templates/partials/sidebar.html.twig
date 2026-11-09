@@ -6,14 +6,14 @@
 {#
     Sidebar links.
     route: null  = the page doesn't exist yet (link goes nowhere for now).
-    badge        = small number bubble. These are SAMPLE numbers;
-                   they become live counts after the database step.
+    badge        = small number bubble, counted live from the database
+                   by src/Twig/AdminStatsExtension.php
 #}
 {% set nav = [
     { label: 'Dashboard',        route: 'app_home', icon: 'dashboard' },
     { label: 'Products & Stock', route: null,       icon: 'package' },
-    { label: 'Orders',           route: null,       icon: 'orders', badge: 3 },
-    { label: 'GCash Payments',   route: null,       icon: 'wallet', badge: 2 },
+    { label: 'Orders',           route: null,       icon: 'orders', badge: pending_orders_count() },
+    { label: 'GCash Payments',   route: null,       icon: 'wallet', badge: gcash_to_verify_count() },
     { label: 'Sales Reports',    route: null,       icon: 'chart' },
     { label: 'Customers',        route: null,       icon: 'users' },
 ] %}

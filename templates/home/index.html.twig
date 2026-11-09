@@ -7,8 +7,7 @@
 {% block page_subtitle %}Store overview for {{ 'now'|date('l, F j, Y') }}{% endblock %}
 
 {% block body %}
-    {# ---------- Lookup tables used by the orders table ---------- #}
-    {% set method_label = { cod: 'COD', pickup_pay: 'Pay on pickup', gcash: 'GCash' } %}
+    {# ---------- Colors for each order status ---------- #}
     {% set status_style = {
         pending:   'bg-honey/15 text-honey-deep',
         confirmed: 'bg-green-100 text-green-800',
@@ -45,14 +44,14 @@
 
         <div class="rounded-2xl bg-parchment p-5 ring-1 ring-ebony/10">
             <p class="text-sm font-semibold text-ebony/60">GCash to verify</p>
-            <p class="mt-2 font-display text-4xl font-bold text-honey-deep">{{ gcash_to_verify }}</p>
+            <p class="mt-2 font-display text-4xl font-bold {{ gcash_to_verify > 0 ? 'text-honey-deep' : '' }}">{{ gcash_to_verify }}</p>
             <p class="mt-2 text-sm text-ebony/60">Reference numbers waiting for a check</p>
         </div>
 
         <div class="rounded-2xl bg-parchment p-5 ring-1 ring-ebony/10">
             <p class="text-sm font-semibold text-ebony/60">Low-stock items</p>
             <p class="mt-2 font-display text-4xl font-bold {{ low_stock|length > 0 ? 'text-red-700' : '' }}">{{ low_stock|length }}</p>
-            <p class="mt-2 text-sm text-ebony/60">3 units or fewer left</p>
+            <p class="mt-2 text-sm text-ebony/60">{{ low_stock_threshold }} units or fewer left</p>
         </div>
     </section>
 
@@ -62,8 +61,8 @@
             <span class="text-honey-deep">{{ icons.icon('alert') }}</span>
             <p>
                 <span class="font-bold">Restock soon:</span>
-                {% for item in low_stock %}
-                    {{ item.name }} ({{ item.stock }} left){{ not loop.last ? ',' }}
+                {% for guitar in low_stock %}
+                    {{ guitar.name }} ({{ guitar.stock }} left){{ not loop.last ? ',' }}
                 {% endfor %}
             </p>
             {# Becomes path('app_product_index') when the Products page exists #}
@@ -94,40 +93,50 @@
                 </thead>
                 <tbody class="divide-y divide-ebony/10">
                     {% for order in recent_orders %}
+                        {% set first_item = order.items.first %}
                         <tr class="align-top">
                             <td class="px-6 py-4">
                                 <p class="font-bold">#{{ order.id }}</p>
-                                <p class="text-xs text-ebony/55">{{ order.created_at|date('M j, g:i A') }}</p>
+                                <p class="text-xs text-ebony/55">{{ order.createdAt|date('M j, g:i A') }}</p>
                             </td>
-                            <td class="px-3 py-4 font-medium">{{ order.customer }}</td>
-                            <td class="px-3 py-4 text-ebony/75">{{ order.items }}</td>
+                            <td class="px-3 py-4 font-medium">{{ order.customer.name }}</td>
+                            <td class="px-3 py-4 text-ebony/75">
+                                {% if first_item %}
+                                    {{ first_item.guitar.name }} × {{ first_item.quantity }}
+                                    {% if order.items|length > 1 %}
+                                        <span class="block text-xs text-ebony/55">and {{ order.items|length - 1 }} more</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-ebony/55">No items</span>
+                                {% endif %}
+                            </td>
                             <td class="px-3 py-4 text-right font-semibold tabular-nums">₱{{ order.total|number_format(2) }}</td>
                             <td class="px-3 py-4">
-                                <p class="font-medium">{{ method_label[order.method] }}</p>
-                                {% if order.method == 'gcash' %}
-                                    <p class="text-xs text-ebony/55">Ref {{ order.ref }}</p>
-                                    <span class="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold {{ order.verified ? 'bg-green-100 text-green-800' : 'bg-honey/15 text-honey-deep' }}">
-                                        {{ order.verified ? 'Verified' : 'Unverified' }}
+                                <p class="font-medium">{{ order.paymentMethod.label }}</p>
+                                {% if order.gcash %}
+                                    <p class="text-xs text-ebony/55">Ref {{ order.paymentRef ?? '—' }}</p>
+                                    <span class="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold {{ order.paymentVerified ? 'bg-green-100 text-green-800' : 'bg-honey/15 text-honey-deep' }}">
+                                        {{ order.paymentVerified ? 'Verified' : 'Unverified' }}
                                     </span>
                                 {% endif %}
                             </td>
                             <td class="px-3 py-4">
-                                <span class="inline-block rounded-full px-2.5 py-1 text-xs font-bold {{ status_style[order.status] }}">
-                                    {{ order.status|capitalize }}
+                                <span class="inline-block rounded-full px-2.5 py-1 text-xs font-bold {{ status_style[order.status.value] }}">
+                                    {{ order.status.label }}
                                 </span>
                             </td>
                             <td class="px-6 py-4">
                                 {# The buttons start working in the Orders / GCash step #}
                                 <div class="flex justify-end gap-2">
-                                    {% if order.status == 'pending' and order.method == 'gcash' and not order.verified %}
+                                    {% if order.needsGcashVerification %}
                                         <button type="button" class="{{ btn_primary }}">Verify GCash</button>
                                         <button type="button" class="{{ btn_outline }}">Details</button>
-                                    {% elseif order.status == 'pending' %}
+                                    {% elseif order.status.value == 'pending' %}
                                         <button type="button" class="{{ btn_primary }}">Confirm</button>
                                         <button type="button" class="{{ btn_outline }}">Details</button>
-                                    {% elseif order.status == 'confirmed' %}
+                                    {% elseif order.status.value == 'confirmed' %}
                                         <button type="button" class="{{ btn_dark }}">Mark shipped</button>
-                                    {% elseif order.status == 'shipped' %}
+                                    {% elseif order.status.value == 'shipped' %}
                                         <button type="button" class="{{ btn_dark }}">Mark delivered</button>
                                     {% else %}
                                         <button type="button" class="{{ btn_outline }}">Details</button>
