@@ -33,6 +33,48 @@ class GuitarRepository extends ServiceEntityRepository
         ;
     }
 
+    /**
+     * Products page list: optional text search (name, brand or item code)
+     * and optional category filter, like the professor's findByCategory().
+     *
+     * @return Guitar[]
+     */
+    public function search(?string $query = null, ?string $category = null): array
+    {
+        $qb = $this->createQueryBuilder('g')
+            ->orderBy('g.name', 'ASC');
+
+        if ($query !== null && trim($query) !== '') {
+            $qb->andWhere('g.name LIKE :q OR g.brand LIKE :q OR g.itemCode LIKE :q')
+               ->setParameter('q', '%'.trim($query).'%');
+        }
+
+        if ($category !== null && $category !== '') {
+            $qb->andWhere('g.category = :category')
+               ->setParameter('category', $category);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /** Suggests the next free item code: SG-0016 exists -> "SG-0017". */
+    public function suggestNextItemCode(): string
+    {
+        $codes = $this->createQueryBuilder('g')
+            ->select('g.itemCode')
+            ->andWhere('g.itemCode LIKE :prefix')
+            ->setParameter('prefix', 'SG-%')
+            ->getQuery()
+            ->getSingleColumnResult();
+
+        $max = 0;
+        foreach ($codes as $code) {
+            $max = max($max, (int) substr($code, 3));
+        }
+
+        return sprintf('SG-%04d', $max + 1);
+    }
+
     /** Total number of units on the shelves (all guitars added up). */
     public function countUnitsInStock(): int
     {

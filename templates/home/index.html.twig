@@ -65,8 +65,7 @@
                     {{ guitar.name }} ({{ guitar.stock }} left){{ not loop.last ? ',' }}
                 {% endfor %}
             </p>
-            {# Becomes path('app_product_index') when the Products page exists #}
-            <a href="#" class="ml-auto font-bold text-honey-deep underline-offset-4 hover:underline">Manage stock</a>
+            <a href="{{ path('app_product_index') }}" class="ml-auto font-bold text-honey-deep underline-offset-4 hover:underline">Manage stock</a>
         </div>
     {% endif %}
 

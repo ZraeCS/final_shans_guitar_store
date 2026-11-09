@@ -10,8 +10,8 @@
                    by src/Twig/AdminStatsExtension.php
 #}
 {% set nav = [
-    { label: 'Dashboard',        route: 'app_home', icon: 'dashboard' },
-    { label: 'Products & Stock', route: null,       icon: 'package' },
+    { label: 'Dashboard',        route: 'app_home',          icon: 'dashboard', section: 'app_home' },
+    { label: 'Products & Stock', route: 'app_product_index', icon: 'package',   section: 'app_product' },
     { label: 'Orders',           route: null,       icon: 'orders', badge: pending_orders_count() },
     { label: 'GCash Payments',   route: null,       icon: 'wallet', badge: gcash_to_verify_count() },
     { label: 'Sales Reports',    route: null,       icon: 'chart' },
@@ -32,7 +32,8 @@
 
     <nav aria-label="Admin" class="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-1 lg:flex-col lg:overflow-visible lg:pb-0">
         {% for item in nav %}
-            {% set active = item.route and current == item.route %}
+            {# active = this page, or one of its sub pages (app_product_edit belongs to app_product) #}
+            {% set active = item.section is defined and (current ?? '') starts with item.section %}
             <a href="{{ item.route ? path(item.route) : '#' }}"
                {% if active %}aria-current="page"{% endif %}
                class="{{ link_base }} {{ active ? 'bg-honey text-white' : 'text-parchment/75 hover:bg-white/10 hover:text-parchment' }}">

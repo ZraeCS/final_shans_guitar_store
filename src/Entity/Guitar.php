@@ -6,6 +6,8 @@ use App\Enum\Availability;
 use App\Repository\GuitarRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * ERD table: guitars
@@ -14,10 +16,14 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: GuitarRepository::class)]
 #[ORM\Table(name: 'guitars')]
 #[ORM\HasLifecycleCallbacks]
+#[UniqueEntity(fields: ['itemCode'], message: 'Another product already uses this item code.')]
 class Guitar
 {
     /** "Low stock" means this many units or fewer (same rule as the store's old admin). */
     public const LOW_STOCK_THRESHOLD = 3;
+
+    /** The categories the store's shop filters use. */
+    public const CATEGORIES = ['Electric', 'Acoustic', 'Bass', 'Classical', 'Accessory'];
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -25,19 +31,27 @@ class Guitar
     private ?int $id = null;
 
     #[ORM\Column(length: 150)]
+    #[Assert\NotBlank(message: 'Enter the product name.')]
+    #[Assert\Length(max: 150)]
     private ?string $name = null;
 
     #[ORM\Column(length: 80)]
+    #[Assert\NotBlank(message: 'Enter the brand.')]
+    #[Assert\Length(max: 80)]
     private ?string $brand = null;
 
     #[ORM\Column(length: 60)]
+    #[Assert\NotBlank(message: 'Choose a category.')]
     private ?string $category = null;
 
     /** Money is a string in PHP so no centavos get lost to float rounding. */
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]
+    #[Assert\NotBlank(message: 'Enter a price.')]
+    #[Assert\Positive(message: 'The price must be more than ₱0.')]
     private ?string $price = null;
 
     #[ORM\Column]
+    #[Assert\PositiveOrZero(message: 'Stock can’t be negative.')]
     private int $stock = 0;
 
     /** Path relative to the store website, e.g. images/products/Martin_D28.jpg */
@@ -55,6 +69,8 @@ class Guitar
 
     /** Fixed from the old database: now required AND unique. */
     #[ORM\Column(length: 20, unique: true)]
+    #[Assert\NotBlank(message: 'Enter an item code, e.g. SG-0017.')]
+    #[Assert\Length(max: 20)]
     private ?string $itemCode = null;
 
     #[ORM\Column(length: 20, enumType: Availability::class)]
@@ -124,7 +140,7 @@ class Guitar
         return $this->price;
     }
 
-    public function setPrice(string $price): static
+    public function setPrice(?string $price): static
     {
         $this->price = $price;
 

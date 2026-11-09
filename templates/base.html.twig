@@ -17,7 +17,11 @@
             {% block importmap %}{{ importmap('app') }}{% endblock %}
         {% endblock %}
     </head>
-    <body class="bg-sand font-sans text-ebony antialiased">
+    {#
+        data-turbo="false": every click is a normal page load. Simpler and more
+        predictable for popups and messages than Turbo's partial page swaps.
+    #}
+    <body class="bg-sand font-sans text-ebony antialiased" data-turbo="false">
         {#
             The "layout" block holds the admin frame (sidebar + page header).
             Pages that must NOT show the sidebar, like the login page later,
@@ -44,6 +48,16 @@
                             </div>
                         {% endif %}
                     </header>
+
+                    {# Messages from addFlash() in controllers ("Martin D-28 was updated.") #}
+                    {% for type, messages in app.flashes(['success', 'error']) %}
+                        {% for message in messages %}
+                            <div role="{{ type == 'error' ? 'alert' : 'status' }}"
+                                 class="mb-5 rounded-2xl border px-5 py-3 text-sm font-medium {{ type == 'error' ? 'border-red-200 bg-red-50 text-red-800' : 'border-green-200 bg-green-50 text-green-800' }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endfor %}
 
                     {% block body %}{% endblock %}
                 </main>

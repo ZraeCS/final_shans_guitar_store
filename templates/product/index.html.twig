@@ -1,0 +1,178 @@
+{% extends 'base.html.twig' %}
+{% import 'partials/icons.html.twig' as icons %}
+
+{% block title %}Products & Stock · Shan's Guitar Admin{% endblock %}
+
+{% block page_title %}Products & Stock{% endblock %}
+{% block page_subtitle %}{{ total_products }} products · {{ units_in_stock }} units on the shelves{% endblock %}
+
+{% block body %}
+    {% set btn = 'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-honey' %}
+    {% set availability_style = {
+        'in-store':    'bg-green-100 text-green-800',
+        'online':      'bg-sky-100 text-sky-800',
+        'pre-order':   'bg-honey/15 text-honey-deep',
+        'coming-soon': 'bg-ebony/10 text-ebony/70',
+    } %}
+
+    <section class="rounded-2xl bg-parchment ring-1 ring-ebony/10">
+        {# ---------- Toolbar: search, category filter, add button ---------- #}
+        <div class="flex flex-wrap items-center gap-3 px-6 py-5">
+            <form method="get" action="{{ path('app_product_index') }}" class="flex flex-1 flex-wrap items-center gap-2">
+                <label class="relative min-w-56 flex-1 sm:max-w-xs">
+                    <span class="sr-only">Search products</span>
+                    <span class="pointer-events-none absolute inset-y-0 left-3 grid place-items-center text-ebony/45">{{ icons.icon('search', 'h-4 w-4') }}</span>
+                    <input type="search" name="q" value="{{ query }}" placeholder="Name, brand or item code"
+                           class="w-full rounded-full border border-ebony/15 bg-white/70 py-2 pl-9 pr-4 text-sm outline-none focus:border-honey focus:ring-2 focus:ring-honey/30">
+                </label>
+                <label>
+                    <span class="sr-only">Category</span>
+                    <select name="category" onchange="this.form.submit()"
+                            class="rounded-full border border-ebony/15 bg-white/70 px-4 py-2 text-sm outline-none focus:border-honey focus:ring-2 focus:ring-honey/30">
+                        <option value="">All categories</option>
+                        {% for c in categories %}
+                            <option value="{{ c }}" {{ c == category ? 'selected' }}>{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <button type="submit" class="{{ btn }} ring-1 ring-ebony/20 hover:bg-sand">Search</button>
+                {% if query or category %}
+                    <a href="{{ path('app_product_index') }}" class="text-sm font-semibold text-honey-deep underline-offset-4 hover:underline">Clear</a>
+                {% endif %}
+            </form>
+
+            <button type="button" onclick="document.getElementById('product-dialog').showModal()"
+                    class="{{ btn }} bg-honey text-white hover:bg-honey-deep">
+                {{ icons.icon('plus', 'h-4 w-4') }} Add product
+            </button>
+        </div>
+
+        {# ---------- Product table ---------- #}
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[60rem] text-left text-sm">
+                <thead class="border-y border-ebony/10 text-xs font-semibold text-ebony/55">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Product</th>
+                        <th scope="col" class="px-3 py-3">Brand</th>
+                        <th scope="col" class="px-3 py-3">Category</th>
+                        <th scope="col" class="px-3 py-3 text-right">Price</th>
+                        <th scope="col" class="px-3 py-3">Availability</th>
+                        <th scope="col" class="px-3 py-3">Stock</th>
+                        <th scope="col" class="px-6 py-3 text-right"><span class="sr-only">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-ebony/10">
+                    {% for guitar in guitars %}
+                        <tr>
+                            <td class="px-6 py-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-white ring-1 ring-ebony/10">
+                                        {% if guitar.image %}
+                                            <img src="{{ store_url(guitar.image) }}" alt="" loading="lazy" class="h-full w-full object-contain">
+                                        {% else %}
+                                            <span class="text-ebony/30">{{ icons.icon('image') }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <p class="font-bold">{{ guitar.name }}</p>
+                                        <p class="text-xs text-ebony/55">
+                                            {{ guitar.itemCode }}
+                                            {% if guitar.bestseller %}· <span class="font-semibold text-honey-deep">Bestseller</span>{% endif %}
+                                            {% if guitar.new %}· <span class="font-semibold text-honey-deep">New</span>{% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-3 py-3">{{ guitar.brand }}</td>
+                            <td class="px-3 py-3">{{ guitar.category }}</td>
+                            <td class="px-3 py-3 text-right font-semibold tabular-nums">₱{{ guitar.price|number_format(2) }}</td>
+                            <td class="px-3 py-3">
+                                <span class="inline-block rounded-full px-2.5 py-1 text-xs font-bold {{ availability_style[guitar.availability.value] }}">
+                                    {{ guitar.availability.label }}
+                                </span>
+                            </td>
+                            <td class="px-3 py-3">
+                                {# − and + buttons: each is a tiny form with its own security token #}
+                                <div class="flex items-center gap-2">
+                                    {% for change in [-1, 1] %}
+                                        {% if change == 1 %}
+                                            <span class="w-24 rounded-full px-2.5 py-1 text-center text-xs font-bold tabular-nums
+                                                {{ guitar.stock == 0 ? 'bg-red-100 text-red-800' : (guitar.lowStock ? 'bg-honey/15 text-honey-deep' : 'bg-green-100 text-green-800') }}">
+                                                {{ guitar.stock == 0 ? 'Out of stock' : guitar.stock ~ ' in stock' }}
+                                            </span>
+                                        {% endif %}
+                                        <form method="post" action="{{ path('app_product_stock', {id: guitar.id}) }}">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('stock' ~ guitar.id) }}">
+                                            <input type="hidden" name="change" value="{{ change }}">
+                                            <input type="hidden" name="q" value="{{ query }}">
+                                            <input type="hidden" name="category" value="{{ category }}">
+                                            <button type="submit" aria-label="{{ change == 1 ? 'Add one' : 'Remove one' }} {{ guitar.name }}"
+                                                    {{ change == -1 and guitar.stock == 0 ? 'disabled' }}
+                                                    class="grid h-7 w-7 place-items-center rounded-full ring-1 ring-ebony/20 transition-colors hover:bg-sand disabled:opacity-30">
+                                                {{ icons.icon(change == 1 ? 'plus' : 'minus', 'h-3.5 w-3.5') }}
+                                            </button>
+                                        </form>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td class="px-6 py-3">
+                                <div class="flex justify-end gap-2">
+                                    <a href="{{ path('app_product_edit', {id: guitar.id}) }}" aria-label="Edit {{ guitar.name }}"
+                                       class="grid h-8 w-8 place-items-center rounded-lg ring-1 ring-ebony/20 transition-colors hover:bg-sand">
+                                        {{ icons.icon('edit', 'h-4 w-4') }}
+                                    </a>
+                                    <form method="post" action="{{ path('app_product_delete', {id: guitar.id}) }}"
+                                          onsubmit="return confirm('Delete {{ guitar.name|e('js') }}? This can’t be undone.');">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ guitar.id) }}">
+                                        <button type="submit" aria-label="Delete {{ guitar.name }}"
+                                                class="grid h-8 w-8 place-items-center rounded-lg text-red-700 ring-1 ring-red-200 transition-colors hover:bg-red-50">
+                                            {{ icons.icon('trash', 'h-4 w-4') }}
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="px-6 py-10 text-center text-ebony/60">
+                                {% if query or category %}
+                                    No products match your search. <a href="{{ path('app_product_index') }}" class="font-semibold text-honey-deep underline">Show all products</a>
+                                {% else %}
+                                    No products yet. Click “Add product” to create the first one.
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    {# ---------- "Add product" popup (opens with the button above) ---------- #}
+    <dialog id="product-dialog" class="m-auto w-full max-w-2xl rounded-2xl bg-parchment p-0 text-ebony shadow-2xl backdrop:bg-ebony/60">
+        {{ form_start(form, {'attr': {'class': 'p-6 sm:p-8'}}) }}
+            <div class="mb-5 flex items-start justify-between gap-4">
+                <div>
+                    <h2 class="font-display text-2xl font-bold">Add product</h2>
+                    <p class="mt-1 text-sm text-ebony/60">It appears in the store as soon as you save it.</p>
+                </div>
+                <button type="button" onclick="this.closest('dialog').close()" aria-label="Close"
+                        class="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ebony/20 hover:bg-sand">
+                    {{ icons.icon('close', 'h-4 w-4') }}
+                </button>
+            </div>
+
+            {{ include('product/_form_fields.html.twig') }}
+
+            <div class="mt-6 flex justify-end gap-2">
+                <button type="button" onclick="this.closest('dialog').close()" class="{{ btn }} ring-1 ring-ebony/20 hover:bg-sand">Cancel</button>
+                <button type="submit" class="{{ btn }} bg-honey text-white hover:bg-honey-deep">Save product</button>
+            </div>
+        {{ form_end(form) }}
+    </dialog>
+
+    {# If the form came back with errors, open the popup again so they're visible #}
+    {% if form.vars.submitted and not form.vars.valid %}
+        <script>document.getElementById('product-dialog').showModal();</script>
+    {% endif %}
+{% endblock %}

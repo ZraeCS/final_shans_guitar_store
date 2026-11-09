@@ -1,0 +1,80 @@
+{#
+    The add / edit product fields, drawn one by one
+    (form_label + form_widget + form_errors, like the professor's modal form).
+    Used by product/index.html.twig (popup) and product/edit.html.twig.
+#}
+{% set input = 'mt-1.5 block w-full rounded-xl border border-ebony/15 bg-white/70 px-3.5 py-2.5 text-sm outline-none transition focus:border-honey focus:ring-2 focus:ring-honey/30' %}
+{% set label = 'block text-sm font-semibold' %}
+{% set error = 'mt-1 text-xs font-semibold text-red-700' %}
+
+{{ form_errors(form) }}
+
+<div class="grid gap-4 sm:grid-cols-2">
+    <div class="sm:col-span-2">
+        {{ form_label(form.name, 'Product name', {'label_attr': {'class': label}}) }}
+        {{ form_widget(form.name, {'attr': {'class': input, 'placeholder': 'e.g. Fender Player II Stratocaster'}}) }}
+        <div class="{{ error }}">{{ form_errors(form.name) }}</div>
+    </div>
+
+    <div>
+        {{ form_label(form.brand, 'Brand', {'label_attr': {'class': label}}) }}
+        {{ form_widget(form.brand, {'attr': {'class': input, 'placeholder': 'e.g. Fender'}}) }}
+        <div class="{{ error }}">{{ form_errors(form.brand) }}</div>
+    </div>
+
+    <div>
+        {{ form_label(form.category, 'Category', {'label_attr': {'class': label}}) }}
+        {{ form_widget(form.category, {'attr': {'class': input}}) }}
+        <div class="{{ error }}">{{ form_errors(form.category) }}</div>
+    </div>
+
+    <div>
+        {{ form_label(form.price, 'Price (₱)', {'label_attr': {'class': label}}) }}
+        {{ form_widget(form.price, {'attr': {'class': input}}) }}
+        <div class="{{ error }}">{{ form_errors(form.price) }}</div>
+    </div>
+
+    <div>
+        {{ form_label(form.stock, 'Units in stock', {'label_attr': {'class': label}}) }}
+        {{ form_widget(form.stock, {'attr': {'class': input}}) }}
+        <div class="{{ error }}">{{ form_errors(form.stock) }}</div>
+    </div>
+
+    <div>
+        {{ form_label(form.itemCode, 'Item code', {'label_attr': {'class': label}}) }}
+        {{ form_widget(form.itemCode, {'attr': {'class': input}}) }}
+        <div class="{{ error }}">{{ form_errors(form.itemCode) }}</div>
+    </div>
+
+    <div>
+        {{ form_label(form.availability, 'Availability', {'label_attr': {'class': label}}) }}
+        {{ form_widget(form.availability, {'attr': {'class': input}}) }}
+        <div class="{{ error }}">{{ form_errors(form.availability) }}</div>
+    </div>
+
+    <div class="sm:col-span-2">
+        {{ form_label(form.description, 'Description', {'label_attr': {'class': label}}) }}
+        {{ form_widget(form.description, {'attr': {'class': input}}) }}
+        <div class="{{ error }}">{{ form_errors(form.description) }}</div>
+    </div>
+
+    <div class="sm:col-span-2">
+        {{ form_label(form.imageFile, 'Photo', {'label_attr': {'class': label}}) }}
+        {{ form_widget(form.imageFile, {'attr': {'class': 'mt-1.5 block w-full text-sm file:mr-3 file:rounded-full file:border-0 file:bg-sand file:px-4 file:py-2 file:text-sm file:font-semibold file:text-ebony hover:file:bg-honey/20', 'accept': '.jpg,.jpeg,.png,.webp'}}) }}
+        <p class="mt-1 text-xs text-ebony/55">JPG, PNG or WEBP, up to 4 MB. Leave empty to keep the current photo.</p>
+        <div class="{{ error }}">{{ form_errors(form.imageFile) }}</div>
+    </div>
+
+    <div class="flex flex-wrap gap-x-6 gap-y-2 sm:col-span-2">
+        <label class="flex items-center gap-2 text-sm">
+            {{ form_widget(form.isBestseller, {'attr': {'class': 'h-4 w-4 accent-honey'}}) }}
+            Show as bestseller
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+            {{ form_widget(form.isNew, {'attr': {'class': 'h-4 w-4 accent-honey'}}) }}
+            Mark as new
+        </label>
+    </div>
+</div>
+
+{{ form_rest(form) }}
