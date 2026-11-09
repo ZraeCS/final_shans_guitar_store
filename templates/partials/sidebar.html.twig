@@ -5,7 +5,6 @@
 
 {#
     Sidebar links.
-    route: null  = the page doesn't exist yet (link goes nowhere for now).
     badge        = small number bubble, counted live from the database
                    by src/Twig/AdminStatsExtension.php
 #}
@@ -14,8 +13,8 @@
     { label: 'Products & Stock', route: 'app_product_index', icon: 'package',   section: 'app_product' },
     { label: 'Orders',           route: 'app_order_index',   icon: 'orders',    section: 'app_order',   badge: pending_orders_count() },
     { label: 'GCash Payments',   route: 'app_gcash_index',   icon: 'wallet',    section: 'app_gcash',   badge: gcash_to_verify_count() },
-    { label: 'Sales Reports',    route: null,       icon: 'chart' },
-    { label: 'Customers',        route: null,       icon: 'users' },
+    { label: 'Sales Reports',    route: 'app_report_index',   icon: 'chart',     section: 'app_report' },
+    { label: 'Customers',        route: 'app_customer_index', icon: 'users',     section: 'app_customer' },
 ] %}
 
 {% set link_base = 'flex shrink-0 items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-honey' %}
@@ -49,7 +48,15 @@
     </nav>
 
     <div class="flex gap-1 border-t border-white/10 px-3 py-3 lg:flex-col lg:py-4">
-        <a href="#" class="{{ link_base }} text-parchment/75 hover:bg-white/10 hover:text-parchment">
+        {# Opens the customer store in a new tab #}
+        <a href="{{ store_url('shop.php') }}" target="_blank" rel="noopener" class="{{ link_base }} text-parchment/75 hover:bg-white/10 hover:text-parchment">
+            {{ icons.icon('external') }}
+            <span>View store</span>
+        </a>
+        {# Settings stays highlighted on "Add staff account" too #}
+        {% set settings_active = current in ['app_settings', 'app_register'] %}
+        <a href="{{ path('app_settings') }}" {% if settings_active %}aria-current="page"{% endif %}
+           class="{{ link_base }} {{ settings_active ? 'bg-honey text-white' : 'text-parchment/75 hover:bg-white/10 hover:text-parchment' }}">
             {{ icons.icon('settings') }}
             <span>Settings</span>
         </a>

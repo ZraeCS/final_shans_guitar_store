@@ -135,6 +135,37 @@ class CustomerOrderRepository extends ServiceEntityRepository
     }
 
     /**
+     * Sales Reports: the raw numbers of every order placed between $from and
+     * $to (all statuses). The SalesReport service adds them up.
+     *
+     * @return array<int, array{createdAt: \DateTimeImmutable, total: string, status: mixed, paymentMethod: mixed}>
+     */
+    public function findForReport(\DateTimeImmutable $from, \DateTimeImmutable $to): array
+    {
+        return $this->createQueryBuilder('o')
+            ->select('o.createdAt, o.total, o.status, o.paymentMethod')
+            ->andWhere('o.createdAt >= :from')
+            ->andWhere('o.createdAt < :to')
+            ->setParameter('from', $from, Types::DATETIME_IMMUTABLE)
+            ->setParameter('to', $to, Types::DATETIME_IMMUTABLE)
+            ->orderBy('o.createdAt', 'ASC')
+            ->getQuery()
+            ->getArrayResult()
+        ;
+    }
+
+    /** Date of the very first order (start of the "All time" report). */
+    public function findFirstOrderDate(): ?\DateTimeImmutable
+    {
+        $first = $this->createQueryBuilder('o')
+            ->select('MIN(o.createdAt)')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return $first ? new \DateTimeImmutable($first) : null;
+    }
+
+    /**
      * Money from orders placed between $from (included) and $to (excluded).
      * Cancelled orders don't count (same rule as the store's old admin).
      */

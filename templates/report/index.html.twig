@@ -1,0 +1,140 @@
+{% extends 'base.html.twig' %}
+{% import 'partials/icons.html.twig' as icons %}
+{% import 'partials/orders.html.twig' as ui %}
+
+{% block title %}Sales Reports · Shan's Guitar Admin{% endblock %}
+
+{% block page_title %}Sales Reports{% endblock %}
+{% block page_subtitle %}{{ period.range == 'custom' ? period.label : period.label ~ ' · ' ~ period.from|date('M j, Y') ~ ' to ' ~ period.to|date_modify('-1 day')|date('M j, Y') }}{% endblock %}
+
+{% block body %}
+    {% set chip = 'inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors' %}
+    {% set btn = 'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-honey' %}
+    {% set card = 'rounded-2xl bg-parchment ring-1 ring-ebony/10' %}
+    {% set export_params = period.range == 'custom' ? {from: from_input, to: to_input} : {range: period.range} %}
+
+    {# ---------- Choose the period ---------- #}
+    <section class="{{ card }} flex flex-wrap items-center justify-between gap-4 px-6 py-5">
+        <nav aria-label="Period" class="flex flex-wrap gap-2">
+            {% for key, label in ranges %}
+                <a href="{{ path('app_report_index', {range: key}) }}"
+                   {% if period.range == key %}aria-current="page"{% endif %}
+                   class="{{ chip }} {{ period.range == key ? 'bg-honey text-white' : 'ring-1 ring-ebony/15 hover:bg-sand' }}">{{ label }}</a>
+            {% endfor %}
+        </nav>
+
+        <div class="flex flex-wrap items-center gap-2">
+            <form method="get" action="{{ path('app_report_index') }}" class="flex flex-wrap items-center gap-2 text-sm">
+                <label class="sr-only" for="from">From</label>
+                <input type="date" id="from" name="from" value="{{ from_input }}" class="rounded-full border border-ebony/15 bg-white/70 px-3 py-1.5 outline-none focus:border-honey focus:ring-2 focus:ring-honey/30">
+                <span class="text-ebony/50">to</span>
+                <label class="sr-only" for="to">To</label>
+                <input type="date" id="to" name="to" value="{{ to_input }}" class="rounded-full border border-ebony/15 bg-white/70 px-3 py-1.5 outline-none focus:border-honey focus:ring-2 focus:ring-honey/30">
+                <button type="submit" class="{{ chip }} {{ period.range == 'custom' ? 'bg-honey text-white' : 'ring-1 ring-ebony/15 hover:bg-sand' }}">Apply</button>
+            </form>
+            <a href="{{ path('app_report_export', export_params) }}" class="{{ btn }} ring-1 ring-ebony/20 hover:bg-sand">
+                {{ icons.icon('download', 'h-4 w-4') }} Download CSV
+            </a>
+        </div>
+    </section>
+
+    {# ---------- Summary ---------- #}
+    <section aria-label="Summary" class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="rounded-2xl bg-ebony p-5 text-parchment">
+            <p class="text-sm font-semibold text-parchment/70">Revenue</p>
+            <p class="mt-2 font-display text-4xl font-bold tabular-nums">₱{{ report.revenue|number_format(2) }}</p>
+            <p class="mt-2 text-sm text-parchment/60">
+                {{ report.cancelled }} cancelled order{{ report.cancelled == 1 ? '' : 's' }} not counted
+            </p>
+        </div>
+        <div class="{{ card }} p-5">
+            <p class="text-sm font-semibold text-ebony/60">Orders</p>
+            <p class="mt-2 font-display text-4xl font-bold tabular-nums">{{ report.sales }}</p>
+        </div>
+        <div class="{{ card }} p-5">
+            <p class="text-sm font-semibold text-ebony/60">Average order</p>
+            <p class="mt-2 font-display text-4xl font-bold tabular-nums">₱{{ report.average|number_format(2) }}</p>
+        </div>
+        <div class="{{ card }} p-5">
+            <p class="text-sm font-semibold text-ebony/60">Units sold</p>
+            <p class="mt-2 font-display text-4xl font-bold tabular-nums">{{ report.units }}</p>
+        </div>
+    </section>
+
+    <div class="mt-6 grid gap-6 xl:grid-cols-[1fr_24rem]">
+        {# ---------- Revenue per day / month (bars drawn with CSS) ---------- #}
+        <section class="{{ card }} self-start">
+            <h2 class="px-6 pt-5 font-display text-xl font-bold">Revenue per {{ report.period_unit }}</h2>
+            <p class="px-6 text-sm text-ebony/60">Each bar is compared with the best {{ report.period_unit }} of the period.</p>
+            <ul class="mt-4 max-h-[32rem] space-y-1.5 overflow-y-auto px-6 pb-6">
+                {% for row in report.by_period|reverse %}
+                    {% set width = report.best_period > 0 ? (row.revenue / report.best_period * 100) : 0 %}
+                    <li class="grid grid-cols-[7rem_1fr_7.5rem] items-center gap-3 text-sm">
+                        <span class="text-ebony/70">{{ row.label }}</span>
+                        <span class="h-3 overflow-hidden rounded-full bg-sand" aria-hidden="true">
+                            <span class="block h-full rounded-full bg-honey" style="width: {{ width|round(1) }}%"></span>
+                        </span>
+                        <span class="text-right tabular-nums {{ row.revenue > 0 ? 'font-semibold' : 'text-ebony/40' }}">
+                            ₱{{ row.revenue|number_format(0) }}
+                            <span class="block text-[11px] font-normal text-ebony/50">{{ row.orders }} order{{ row.orders == 1 ? '' : 's' }}</span>
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <div class="space-y-6">
+            {# ---------- Best sellers ---------- #}
+            <section class="{{ card }}">
+                <h2 class="px-6 pt-5 font-display text-xl font-bold">Best sellers</h2>
+                <ol class="mt-3 divide-y divide-ebony/10 px-6 pb-4">
+                    {% for p in report.top_products %}
+                        <li class="flex items-center gap-3 py-2.5 text-sm">
+                            <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full {{ loop.first ? 'bg-honey text-white' : 'bg-sand text-honey-deep' }} text-xs font-bold">{{ loop.index }}</span>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate font-semibold">{{ p.name }}</p>
+                                <p class="text-xs text-ebony/55">{{ p.itemCode }} · {{ p.units }} unit{{ p.units == 1 ? '' : 's' }}</p>
+                            </div>
+                            <span class="font-semibold tabular-nums">₱{{ p.revenue|number_format(0) }}</span>
+                        </li>
+                    {% else %}
+                        <li class="py-6 text-center text-sm text-ebony/60">No sales in this period.</li>
+                    {% endfor %}
+                </ol>
+            </section>
+
+            {# ---------- Payment methods ---------- #}
+            <section class="{{ card }} p-6">
+                <h2 class="font-display text-xl font-bold">Payment methods</h2>
+                <ul class="mt-4 space-y-3 text-sm">
+                    {% for m in report.by_method %}
+                        {% set share = report.revenue > 0 ? (m.revenue / report.revenue * 100) : 0 %}
+                        <li>
+                            <div class="flex justify-between">
+                                <span class="font-semibold">{{ m.label }}</span>
+                                <span class="tabular-nums">₱{{ m.revenue|number_format(0) }} · {{ m.orders }} order{{ m.orders == 1 ? '' : 's' }}</span>
+                            </div>
+                            <span class="mt-1 block h-2 overflow-hidden rounded-full bg-sand" aria-hidden="true">
+                                <span class="block h-full rounded-full bg-ebony" style="width: {{ share|round(1) }}%"></span>
+                            </span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+
+            {# ---------- Orders by status ---------- #}
+            <section class="{{ card }} p-6">
+                <h2 class="font-display text-xl font-bold">Orders by status</h2>
+                <p class="mt-1 text-sm text-ebony/60">Every order placed in this period.</p>
+                <ul class="mt-4 flex flex-wrap gap-2">
+                    {% for row in report.by_status %}
+                        <li class="flex items-center gap-2 rounded-full bg-white/60 py-1 pl-1 pr-3 text-sm ring-1 ring-ebony/10">
+                            {{ ui.status_badge(row.status) }}
+                            <span class="font-semibold tabular-nums">{{ row.count }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends 'base.html.twig' %}
+{% import 'partials/icons.html.twig' as icons %}
+{% import 'partials/orders.html.twig' as ui %}
+
+{% block title %}{{ customer.name }} · Shan's Guitar Admin{% endblock %}
+
+{% block page_title %}{{ customer.name }}{% endblock %}
+{% block page_subtitle %}Customer since {{ customer.createdAt|date('F j, Y') }}{% endblock %}
+
+{% block body %}
+    <a href="{{ path('app_customer_index') }}" class="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-honey-deep underline-offset-4 hover:underline">
+        {{ icons.icon('back', 'h-4 w-4') }} Back to Customers
+    </a>
+
+    <section class="grid gap-4 sm:grid-cols-3">
+        <div class="rounded-2xl bg-parchment p-5 ring-1 ring-ebony/10 text-sm">
+            <p class="text-xs font-semibold text-ebony/55">Contact</p>
+            <p class="mt-2 font-semibold">{{ customer.email }}</p>
+            <p class="text-ebony/70">{{ customer.phone ?? 'No phone given' }}</p>
+        </div>
+        <div class="rounded-2xl bg-parchment p-5 ring-1 ring-ebony/10">
+            <p class="text-xs font-semibold text-ebony/55">Orders (not cancelled)</p>
+            <p class="mt-2 font-display text-3xl font-bold">{{ active_orders }}</p>
+        </div>
+        <div class="rounded-2xl bg-parchment p-5 ring-1 ring-ebony/10">
+            <p class="text-xs font-semibold text-ebony/55">Total spent</p>
+            <p class="mt-2 font-display text-3xl font-bold">₱{{ spent|number_format(2) }}</p>
+        </div>
+    </section>
+
+    <section class="mt-6 rounded-2xl bg-parchment ring-1 ring-ebony/10">
+        <h2 class="px-6 py-5 font-display text-xl font-bold">Order history</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[52rem] text-left text-sm">
+                <thead class="border-y border-ebony/10 text-xs font-semibold text-ebony/55">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Order</th>
+                        <th scope="col" class="px-3 py-3">Items</th>
+                        <th scope="col" class="px-3 py-3 text-right">Total</th>
+                        <th scope="col" class="px-3 py-3">Payment</th>
+                        <th scope="col" class="px-3 py-3">Status</th>
+                        <th scope="col" class="px-6 py-3"><span class="sr-only">Details</span></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-ebony/10">
+                    {% for order in orders %}
+                        <tr class="align-top">
+                            <td class="px-6 py-4">
+                                <a href="{{ path('app_order_show', {id: order.id}) }}" class="font-bold underline-offset-4 hover:underline">#{{ order.id }}</a>
+                                <p class="text-xs text-ebony/55">{{ order.createdAt|date('M j, Y g:i A') }}</p>
+                            </td>
+                            <td class="px-3 py-4 text-ebony/75">{{ ui.items_summary(order) }}</td>
+                            <td class="px-3 py-4 text-right font-semibold tabular-nums">₱{{ order.total|number_format(2) }}</td>
+                            <td class="px-3 py-4">{{ ui.payment(order) }}</td>
+                            <td class="px-3 py-4">{{ ui.status_badge(order.status) }}</td>
+                            <td class="px-6 py-4 text-right">
+                                <a href="{{ path('app_order_show', {id: order.id}) }}" class="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold ring-1 ring-ebony/20 hover:bg-sand">Details</a>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="6" class="px-6 py-10 text-center text-ebony/60">This customer hasn’t ordered yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+{% endblock %}

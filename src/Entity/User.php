@@ -8,6 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * ERD table: users
@@ -25,12 +26,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?int $id = null;
 
     #[ORM\Column(length: 120)]
+    #[Assert\NotBlank(message: 'Enter a name.')]
+    #[Assert\Length(max: 120)]
     private ?string $name = null;
 
     #[ORM\Column(length: 190, unique: true)]
+    #[Assert\NotBlank(message: 'Enter an email address.')]
+    #[Assert\Email(message: 'That doesn’t look like an email address.')]
+    #[Assert\Length(max: 190)]
     private ?string $email = null;
 
     #[ORM\Column(length: 40, nullable: true)]
+    #[Assert\Regex(pattern: '/^[0-9+()\-\s]{7,20}$/', message: 'Enter a valid phone number.')]
     private ?string $phone = null;
 
     /** The hashed password (bcrypt, the same format the store's password_hash() makes). */

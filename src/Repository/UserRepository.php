@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Entity\CustomerOrder;
 use App\Entity\User;
 use App\Enum\UserRole;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -32,6 +33,35 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         $user->setPassword($newHashedPassword);
         $this->getEntityManager()->persist($user);
         $this->getEntityManager()->flush();
+    }
+
+    /**
+     * Customers page: each customer with their order statistics.
+     * LEFT JOIN, so customers who never ordered still appear (0 orders).
+     * "orders" and "spent" both ignore cancelled orders.
+     *
+     * @return array<int, array{customer: User, orders: int, spent: string, lastOrder: ?string}>
+     */
+    public function findCustomersWithStats(?string $query = null): array
+    {
+        $qb = $this->createQueryBuilder('u')
+            ->select('u AS customer')
+            ->addSelect("COALESCE(SUM(CASE WHEN o.status != 'cancelled' THEN 1 ELSE 0 END), 0) AS orders")
+            ->addSelect("COALESCE(SUM(CASE WHEN o.status != 'cancelled' THEN o.total ELSE 0 END), 0) AS spent")
+            ->addSelect('MAX(o.createdAt) AS lastOrder')
+            ->leftJoin(CustomerOrder::class, 'o', 'WITH', 'o.customer = u')
+            ->andWhere('u.role = :role')
+            ->setParameter('role', UserRole::User->value)
+            ->groupBy('u.id')
+            ->orderBy('u.createdAt', 'DESC');
+
+        $query = trim((string) $query);
+        if ($query !== '') {
+            $qb->andWhere('u.name LIKE :q OR u.email LIKE :q OR u.phone LIKE :q')
+               ->setParameter('q', '%'.$query.'%');
+        }
+
+        return $qb->getQuery()->getResult();
     }
 
     /**
