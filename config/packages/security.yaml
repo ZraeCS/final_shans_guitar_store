@@ -1,11 +1,16 @@
 security:
     # https://symfony.com/doc/current/security.html#registering-the-user-hashing-passwords
+    # 'auto' reads the bcrypt hashes the store made with password_hash(),
+    # so every existing password keeps working.
     password_hashers:
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
 
-    # https://symfony.com/doc/current/security.html#loading-the-user-the-user-provider
+    # Load users from the `users` table, logging in with their email
     providers:
-        users_in_memory: { memory: null }
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: email
 
     firewalls:
         dev:
@@ -14,18 +19,24 @@ security:
             security: false
         main:
             lazy: true
-            provider: users_in_memory
-
-            # Activate different ways to authenticate:
-            # https://symfony.com/doc/current/security.html#the-firewall
-
-            # https://symfony.com/doc/current/security/impersonating_user.html
-            # switch_user: true
+            provider: app_user_provider
+            custom_authenticator: App\Security\LoginAuthenticator
+            # Only role = 'admin' may log in here (customers use the store)
+            user_checker: App\Security\AdminUserChecker
+            logout:
+                path: app_logout
+                # where to go after logging out
+                target: app_login
+            remember_me:
+                secret: '%kernel.secret%'
+                lifetime: 604800 # 1 week
+                path: /
 
     # Note: Only the *first* matching rule is applied
     access_control:
-        # - { path: ^/admin, roles: ROLE_ADMIN }
-        # - { path: ^/profile, roles: ROLE_USER }
+        - { path: ^/login, roles: PUBLIC_ACCESS }
+        # Every admin page lives under /dashboard, so this one line protects them all
+        - { path: ^/dashboard, roles: ROLE_ADMIN }
 
 when@test:
     security:

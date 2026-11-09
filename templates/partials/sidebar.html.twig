@@ -52,8 +52,7 @@
             {{ icons.icon('settings') }}
             <span>Settings</span>
         </a>
-        {# Becomes path('app_logout') after the login step #}
-        <a href="#" class="{{ link_base }} text-parchment/75 hover:bg-white/10 hover:text-parchment">
+        <a href="{{ path('app_logout') }}" class="{{ link_base }} text-parchment/75 hover:bg-white/10 hover:text-parchment">
             {{ icons.icon('logout') }}
             <span>Log out</span>
         </a>
