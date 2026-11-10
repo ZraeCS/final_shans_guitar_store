@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Enum\UserRole;
+use App\Enum\UserStatus;
 use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
@@ -46,6 +47,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column(length: 10, enumType: UserRole::class)]
     private UserRole $role = UserRole::User;
+
+    /** active / disabled: disabled accounts cannot log in (their history stays) */
+    #[ORM\Column(length: 10, enumType: UserStatus::class, options: ['default' => 'active'])]
+    private UserStatus $status = UserStatus::Active;
 
     #[ORM\Column(options: ['default' => 'CURRENT_TIMESTAMP'])]
     private ?\DateTimeImmutable $createdAt = null;
@@ -113,9 +118,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->role;
     }
 
-    public function setRole(UserRole $role): static
+    /** null is ignored, so a form sent without a role can't break the page */
+    public function setRole(?UserRole $role): static
     {
-        $this->role = $role;
+        if ($role !== null) {
+            $this->role = $role;
+        }
 
         return $this;
     }
@@ -123,6 +131,37 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function isAdmin(): bool
     {
         return $this->role === UserRole::Admin;
+    }
+
+    public function isStaff(): bool
+    {
+        return $this->role === UserRole::Staff;
+    }
+
+    /** Staff or admin: may open the admin panel (if the account is active). */
+    public function isStaffMember(): bool
+    {
+        return $this->isAdmin() || $this->isStaff();
+    }
+
+    public function getStatus(): UserStatus
+    {
+        return $this->status;
+    }
+
+    /** null is ignored, so a form sent without a status can't break the page */
+    public function setStatus(?UserStatus $status): static
+    {
+        if ($status !== null) {
+            $this->status = $status;
+        }
+
+        return $this;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->status === UserStatus::Active;
     }
 
     public function getCreatedAt(): ?\DateTimeImmutable
@@ -155,12 +194,25 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     /**
      * Converts the ERD's single `role` column into Symfony roles:
-     *   'admin' -> ROLE_ADMIN (+ ROLE_USER)
-     *   'user'  -> ROLE_USER
+     *   'admin' -> ROLE_ADMIN   (security.yaml: ROLE_ADMIN also has ROLE_STAFF)
+     *   'staff' -> ROLE_STAFF
+     *   'user'  -> ROLE_USER    (customers)
+     *
+     * A DISABLED account has no roles at all. If an admin disables someone who
+     * is logged in, Symfony notices the roles changed on their next click and
+     * logs them out.
      */
     public function getRoles(): array
     {
-        return $this->isAdmin() ? ['ROLE_ADMIN', 'ROLE_USER'] : ['ROLE_USER'];
+        if (!$this->isActive()) {
+            return [];
+        }
+
+        return match ($this->role) {
+            UserRole::Admin => ['ROLE_ADMIN'],
+            UserRole::Staff => ['ROLE_STAFF'],
+            UserRole::User => ['ROLE_USER'],
+        };
     }
 
     /**

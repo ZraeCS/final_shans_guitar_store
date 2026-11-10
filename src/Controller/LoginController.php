@@ -12,9 +12,9 @@ final class LoginController extends AbstractController
     #[Route(path: '/login', name: 'app_login')]
     public function login(AuthenticationUtils $authenticationUtils): Response
     {
-        // Already logged in as an admin? Go straight to the dashboard.
-        if ($this->isGranted('ROLE_ADMIN')) {
-            return $this->redirectToRoute('app_home');
+        // Already logged in (staff or admin)? Go to your home page.
+        if ($this->isGranted('ROLE_STAFF')) {
+            return $this->redirectToRoute('app_root');
         }
 
         return $this->render('security/login.html.twig', [

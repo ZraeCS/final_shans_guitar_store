@@ -6,6 +6,8 @@ use App\Entity\Guitar;
 use App\Form\GuitarType;
 use App\Repository\GuitarRepository;
 use App\Repository\OrderItemRepository;
+use App\Entity\User;
+use App\Security\Voter\GuitarVoter;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -15,12 +17,18 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
- * Products & Stock page.
- * Every URL starts with /dashboard, so security.yaml already protects it.
+ * Products & Stock page (staff and admins).
+ *
+ * Access rules:
+ *  - security.yaml + #[IsGranted] below: staff or admin only
+ *  - GuitarVoter: staff may edit / restock / delete only the products they
+ *    added; admins may change any product
  */
 #[Route('/dashboard/products')]
+#[IsGranted('ROLE_STAFF')]
 final class ProductController extends AbstractController
 {
     public function __construct(
@@ -44,6 +52,9 @@ final class ProductController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid() && $this->saveUploadedImage($form, $guitar)) {
+            /** @var User $currentUser */
+            $currentUser = $this->getUser();
+            $guitar->setCreatedBy($currentUser); // the owner of this record
             $this->entityManager->persist($guitar);
             $this->entityManager->flush();
 
@@ -69,6 +80,8 @@ final class ProductController extends AbstractController
     #[Route('/{id}/edit', name: 'app_product_edit', methods: ['GET', 'POST'])]
     public function edit(Request $request, Guitar $guitar): Response
     {
+        $this->denyAccessUnlessGranted(GuitarVoter::EDIT, $guitar);
+
         $form = $this->createForm(GuitarType::class, $guitar);
         $form->handleRequest($request);
 
@@ -90,6 +103,8 @@ final class ProductController extends AbstractController
     #[Route('/{id}/stock', name: 'app_product_stock', methods: ['POST'])]
     public function adjustStock(Request $request, Guitar $guitar): Response
     {
+        $this->denyAccessUnlessGranted(GuitarVoter::EDIT, $guitar);
+
         if ($this->isCsrfTokenValid('stock'.$guitar->getId(), $request->getPayload()->getString('_token'))) {
             $change = $request->getPayload()->getInt('change');
             if (in_array($change, [-1, 1], true)) {
@@ -104,6 +119,8 @@ final class ProductController extends AbstractController
     #[Route('/{id}/delete', name: 'app_product_delete', methods: ['POST'])]
     public function delete(Request $request, Guitar $guitar, OrderItemRepository $orderItemRepository): Response
     {
+        $this->denyAccessUnlessGranted(GuitarVoter::DELETE, $guitar);
+
         if (!$this->isCsrfTokenValid('delete'.$guitar->getId(), $request->getPayload()->getString('_token'))) {
             return $this->redirectToRoute('app_product_index', [], Response::HTTP_SEE_OTHER);
         }

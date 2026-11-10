@@ -5,6 +5,7 @@ namespace App\Repository;
 use App\Entity\CustomerOrder;
 use App\Entity\User;
 use App\Enum\UserRole;
+use App\Enum\UserStatus;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
@@ -33,6 +34,46 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         $user->setPassword($newHashedPassword);
         $this->getEntityManager()->persist($user);
         $this->getEntityManager()->flush();
+    }
+
+    /**
+     * Users page (admin): every account, optionally filtered by role, status
+     * and a search on name or email. Admins first, then staff, then customers.
+     *
+     * @return User[]
+     */
+    public function searchAccounts(?string $query = null, ?UserRole $role = null, ?UserStatus $status = null): array
+    {
+        $qb = $this->createQueryBuilder('u')
+            ->addSelect("CASE WHEN u.role = 'admin' THEN 0 WHEN u.role = 'staff' THEN 1 ELSE 2 END AS HIDDEN roleOrder")
+            ->orderBy('roleOrder', 'ASC')
+            ->addOrderBy('u.name', 'ASC');
+
+        $query = trim((string) $query);
+        if ($query !== '') {
+            $qb->andWhere('u.name LIKE :q OR u.email LIKE :q')->setParameter('q', '%'.$query.'%');
+        }
+        if ($role !== null) {
+            $qb->andWhere('u.role = :role')->setParameter('role', $role->value);
+        }
+        if ($status !== null) {
+            $qb->andWhere('u.status = :status')->setParameter('status', $status->value);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /** How many ACTIVE admins exist (the last one may not be removed, demoted or disabled). */
+    public function countActiveAdmins(): int
+    {
+        return (int) $this->createQueryBuilder('u')
+            ->select('COUNT(u.id)')
+            ->andWhere('u.role = :admin')
+            ->andWhere('u.status = :active')
+            ->setParameter('admin', UserRole::Admin->value)
+            ->setParameter('active', UserStatus::Active->value)
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     /**

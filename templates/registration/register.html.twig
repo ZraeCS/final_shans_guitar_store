@@ -1,9 +1,9 @@
 {% extends 'base.html.twig' %}
 {% import 'partials/icons.html.twig' as icons %}
 
-{% block title %}Add staff account · Shan's Guitar Admin{% endblock %}
+{% block title %}Add account · Shan's Guitar Admin{% endblock %}
 
-{% block page_title %}Add staff account{% endblock %}
+{% block page_title %}Add staff or admin account{% endblock %}
 {% block page_subtitle %}The new person can log in to this admin panel{% endblock %}
 
 {% block body %}
@@ -12,14 +12,15 @@
     {% set error = 'mt-1 text-xs font-semibold text-red-700' %}
     {% set btn = 'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-honey' %}
 
-    <a href="{{ path('app_settings') }}" class="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-honey-deep underline-offset-4 hover:underline">
-        {{ icons.icon('back', 'h-4 w-4') }} Back to Settings
+    <a href="{{ path('app_user_index') }}" class="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-honey-deep underline-offset-4 hover:underline">
+        {{ icons.icon('back', 'h-4 w-4') }} Back to Users
     </a>
 
     <section class="max-w-2xl rounded-2xl bg-parchment p-6 ring-1 ring-ebony/10 sm:p-8">
         <p class="text-sm text-ebony/70">
-            Staff accounts are for people who work at Shan’s Guitar. They can manage products,
-            orders and GCash payments. Customers don’t need this: they sign up on the store.
+            Accounts for people who work at Shan’s Guitar. <strong>Staff</strong> can add products (and edit their own),
+            handle orders and GCash payments, and view customers. <strong>Admins</strong> can also see the dashboard and
+            reports and manage user accounts. Customers don’t need this: they sign up on the store.
         </p>
 
         {{ form_start(registrationForm, {'attr': {'class': 'mt-6'}}) }}
@@ -55,10 +56,22 @@
                 </div>
                 <div class="{{ error }} sm:col-span-2 -mt-3">{{ form_errors(registrationForm.plainPassword) }}{{ form_errors(registrationForm.plainPassword.first) }}</div>
 
+                <fieldset class="sm:col-span-2">
+                    <legend class="{{ label }}">Role</legend>
+                    <div class="mt-2 flex flex-wrap gap-3">
+                        {% for choice in registrationForm.role %}
+                            <label class="flex items-center gap-2 rounded-xl bg-white/70 px-4 py-2.5 text-sm ring-1 ring-ebony/15">
+                                {{ form_widget(choice, {'attr': {'class': 'h-4 w-4 accent-honey'}}) }} {{ choice.vars.label }}
+                            </label>
+                        {% endfor %}
+                    </div>
+                    <div class="{{ error }}">{{ form_errors(registrationForm.role) }}</div>
+                </fieldset>
+
                 <div class="sm:col-span-2">
                     <label class="flex items-start gap-2 text-sm">
                         {{ form_widget(registrationForm.confirmStaff, {'attr': {'class': 'mt-0.5 h-4 w-4 accent-honey'}}) }}
-                        <span>I confirm this person works at Shan’s Guitar and should have full access to the admin panel.</span>
+                        <span>I confirm this person works at Shan’s Guitar and should have access to the panel with the role chosen above.</span>
                     </label>
                     <div class="{{ error }}">{{ form_errors(registrationForm.confirmStaff) }}</div>
                 </div>
@@ -67,8 +80,8 @@
             {{ form_rest(registrationForm) }}
 
             <div class="mt-6 flex justify-end gap-2">
-                <a href="{{ path('app_settings') }}" class="{{ btn }} ring-1 ring-ebony/20 hover:bg-sand">Cancel</a>
-                <button type="submit" class="{{ btn }} bg-honey text-white hover:bg-honey-deep">Create staff account</button>
+                <a href="{{ path('app_user_index') }}" class="{{ btn }} ring-1 ring-ebony/20 hover:bg-sand">Cancel</a>
+                <button type="submit" class="{{ btn }} bg-honey text-white hover:bg-honey-deep">Create account</button>
             </div>
         {{ form_end(registrationForm) }}
     </section>

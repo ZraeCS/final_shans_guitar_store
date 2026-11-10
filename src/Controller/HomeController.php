@@ -4,16 +4,24 @@ namespace App\Controller;
 
 use App\Entity\Guitar;
 use App\Enum\OrderStatus;
+use App\Enum\UserRole;
 use App\Repository\CustomerOrderRepository;
 use App\Repository\GuitarRepository;
+use App\Repository\UserRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 final class HomeController extends AbstractController
 {
+    /**
+     * The ADMIN dashboard. Protected twice: by security.yaml (^/dashboard$)
+     * and by this controller-level check.
+     */
     #[Route('/dashboard', name: 'app_home')]
-    public function index(CustomerOrderRepository $orderRepository, GuitarRepository $guitarRepository): Response
+    #[IsGranted('ROLE_ADMIN')]
+    public function index(CustomerOrderRepository $orderRepository, GuitarRepository $guitarRepository, UserRepository $userRepository): Response
     {
         // "today" = midnight Manila time (the timezone is set in src/Kernel.php)
         $today = new \DateTimeImmutable('today');
@@ -37,12 +45,29 @@ final class HomeController extends AbstractController
             'low_stock' => $guitarRepository->findLowStock(),
             'low_stock_threshold' => Guitar::LOW_STOCK_THRESHOLD,
             'recent_orders' => $orderRepository->findRecent(6),
+            // System overview: total users, total staff, total records
+            'totals' => [
+                'users' => $userRepository->count([]),
+                'customers' => $userRepository->count(['role' => UserRole::User]),
+                'staff' => $userRepository->count(['role' => UserRole::Staff]),
+                'admins' => $userRepository->count(['role' => UserRole::Admin]),
+                'products' => $guitarRepository->count([]),
+                'orders' => $orderRepository->count([]),
+            ],
         ]);
     }
 
+    /** Home page by role: admins -> dashboard, staff -> Products & Stock. */
     #[Route('/', name: 'app_root')]
     public function root(): Response
     {
-        return $this->redirectToRoute('app_home');
+        if ($this->isGranted('ROLE_ADMIN')) {
+            return $this->redirectToRoute('app_home');
+        }
+        if ($this->isGranted('ROLE_STAFF')) {
+            return $this->redirectToRoute('app_product_index');
+        }
+
+        return $this->redirectToRoute('app_login');
     }
 }

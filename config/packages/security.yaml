@@ -5,6 +5,10 @@ security:
     password_hashers:
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
 
+    # An admin can do everything a staff member can (plus admin-only pages)
+    role_hierarchy:
+        ROLE_ADMIN: [ROLE_STAFF]
+
     # Load users from the `users` table, logging in with their email
     providers:
         app_user_provider:
@@ -21,8 +25,11 @@ security:
             lazy: true
             provider: app_user_provider
             custom_authenticator: App\Security\LoginAuthenticator
-            # Only role = 'admin' may log in here (customers use the store)
-            user_checker: App\Security\AdminUserChecker
+            # Only active staff and admin accounts may log in here (customers use the store)
+            user_checker: App\Security\StaffUserChecker
+            # Logged in but not allowed (e.g. staff opening an admin page):
+            # show "Access denied" and send them to their own home page
+            access_denied_handler: App\Security\AccessDeniedHandler
             logout:
                 path: app_logout
                 # where to go after logging out
@@ -32,11 +39,14 @@ security:
                 lifetime: 604800 # 1 week
                 path: /
 
-    # Note: Only the *first* matching rule is applied
+    # Note: Only the *first* matching rule is applied, so the admin-only rules come first
     access_control:
         - { path: ^/login, roles: PUBLIC_ACCESS }
-        # Every admin page lives under /dashboard, so this one line protects them all
-        - { path: ^/dashboard, roles: ROLE_ADMIN }
+        # Admin only: the admin dashboard, user management and sales reports
+        - { path: ^/dashboard$, roles: ROLE_ADMIN }
+        - { path: ^/dashboard/(users|reports), roles: ROLE_ADMIN }
+        # Everything else in the panel: staff (and admins, through role_hierarchy)
+        - { path: ^/dashboard, roles: ROLE_STAFF }
 
 when@test:
     security:

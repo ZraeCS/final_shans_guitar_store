@@ -2,9 +2,10 @@
 
 CSC 304 Web Programming — final project.
 
-The admin dashboard of **Shan's Guitar**, a guitar store in Dumaguete City. Staff use it
-to manage products and stock, handle orders, verify GCash payments, follow sales, see
-customers and add staff accounts.
+The staff panel of **Shan's Guitar**, a guitar store in Dumaguete City. It has two roles:
+**Admin** and **Staff**. Staff manage products (their own), handle orders, verify GCash
+payments and view customers; admins can do all of that plus see the dashboard and sales
+reports and manage every user account.
 
 It shares **one database** with the customer website (the PHP store,
 [shans_guitar_store_web_app](https://github.com/ZraeCS/shans_guitar_store_web_app)):
@@ -19,16 +20,42 @@ Admin's browser   ──> Admin (Symfony)      ──┘
 
 ## Features
 
-| Page | What it does |
-|---|---|
-| **Dashboard** (`/dashboard`) | Today's sales vs yesterday, orders today, GCash payments to verify, low-stock alert, recent orders with one-click actions |
-| **Products & Stock** | Search and filter, add a product in a popup form, edit, photo upload (saved in the store's folder), − / + stock buttons, safe delete (products that were ever ordered can't be deleted) |
-| **Orders** | Filter by status, search by order number or customer, order details with progress bar, confirm → ship → deliver, cancel (stock goes back) |
-| **GCash Payments** | Queue of reference numbers to check in the GCash app, Verify / Reject, recently verified list (who and when) |
-| **Sales Reports** | Today / 7 days / 30 days / this month / all time / custom dates, revenue per day or month, best sellers, payment methods, orders by status, CSV download |
-| **Customers** | Everyone who signed up on the store, with orders and total spent, and each customer's order history |
-| **Settings** | Change your password, list of staff accounts, **Add staff account** (registration) |
-| **Login** | Staff only (`role = admin`), remember me, logout, forgot password (handled by the store) |
+| Page | Who | What it does |
+|---|---|---|
+| **Dashboard** (`/dashboard`) | Admin | Total users, total staff, product and order records; today's sales vs yesterday, orders today, GCash payments to verify, low-stock alert, recent orders with one-click actions |
+| **Products & Stock** | Staff, Admin | Search and filter, add a product in a popup form, edit, photo upload (saved in the store's folder), − / + stock buttons, delete with confirmation. **Staff may change only the products they added; admins may change any** |
+| **Orders** | Staff, Admin | Filter by status, search by order number or customer, order details with progress bar, confirm → ship → deliver, cancel (stock goes back) |
+| **GCash Payments** | Staff, Admin | Queue of reference numbers to check in the GCash app, Verify / Reject, recently verified list (who and when) |
+| **Sales Reports** | Admin | Today / 7 days / 30 days / this month / all time / custom dates, revenue per day or month, best sellers, payment methods, orders by status, CSV download |
+| **Customers** | Staff, Admin | Everyone who signed up on the store, with orders and total spent, and each customer's order history |
+| **Users** | Admin | Every account (name, email, role, status, date created), filter and search; **create** Staff or Admin accounts (registration), **edit** name / email / role / status, **reset password**, **disable / enable**, **delete with confirmation** |
+| **My account** | Staff, Admin | Your profile and **change your password** |
+| **Login** | Staff, Admin | Active staff and admin accounts only, remember me, logout, forgot password (handled by the store) |
+
+## Roles and access control
+
+| | Customer (`user`) | Staff (`staff`) | Admin (`admin`) |
+|---|---|---|---|
+| Store (shop, cart, checkout, account) | ✅ | — | — |
+| Panel login | ❌ refused | ✅ | ✅ |
+| Products: view, add | — | ✅ | ✅ |
+| Products: edit, restock, delete | — | **own only** | any |
+| Orders, GCash, Customers | — | ✅ | ✅ |
+| My account (profile, password) | — | ✅ | ✅ |
+| Dashboard, Sales Reports, Users | — | ❌ Access denied | ✅ |
+
+How it is enforced, in three layers:
+
+1. **`config/packages/security.yaml`**: `role_hierarchy` (ROLE_ADMIN includes ROLE_STAFF) and
+   `access_control` (`^/dashboard$` and `^/dashboard/(users|reports)` need ROLE_ADMIN, the rest of
+   `/dashboard` needs ROLE_STAFF).
+2. **Controllers**: `#[IsGranted('ROLE_ADMIN')]` / `#[IsGranted('ROLE_STAFF')]` on every controller,
+   and `GuitarVoter` (`src/Security/Voter/`) for "own records only".
+3. **Templates**: the sidebar and the Edit / Delete buttons use `is_granted()`.
+
+A logged-in user who opens a page they may not use (for example staff typing `/dashboard/users`)
+sees **"Access denied"** and is sent to their own home page (`src/Security/AccessDeniedHandler.php`).
+Disabled accounts can't log in, and a logged-in user who gets disabled is signed out on their next click.
 
 ## Built with
 
@@ -73,12 +100,16 @@ While working on the design, keep `symfony console tailwind:build --watch` runni
 
 The fixtures copy the accounts of the original store, **with their original passwords**:
 
-| Email | Role |
-|---|---|
-| admin@shansguitar.com | Admin (logs in here) |
-| hochimin@gmail.com, johncruz1@gmail.com | Customers (log in on the store) |
+| Email | Role | Password |
+|---|---|---|
+| admin@shansguitar.com | Admin | the original store admin password |
+| mika@shansguitar.com | Staff (active) | `staff12345` (demo) |
+| paolo@shansguitar.com | Staff (**disabled**, to show the status feature) | `staff12345` (demo) |
+| hochimin@gmail.com, johncruz1@gmail.com | Customers (log in on the store) | their original passwords |
 
-New staff accounts are created in **Settings → Add staff account**.
+Mika added two products (Ernie Ball Slinky, Fender Deluxe Gig Bag), so the demo shows staff
+editing their own records while the other products are view-only. New accounts are created in
+**Users → Add staff / admin**.
 Forgot a password? Use "Forgot password?" on either login page; the email arrives in Mailpit.
 
 ## Rebuilding the database (drop test)
@@ -110,8 +141,8 @@ Tables follow the project ERD (see the ERD in the course submission):
 
 | Table | Entity | Notes |
 |---|---|---|
-| `users` | `User` | Customers **and** staff, told apart by `role` (`user` / `admin`) |
-| `guitars` | `Guitar` | Guitars and accessories; `item_code` is unique |
+| `users` | `User` | Customers, staff and admins, told apart by `role` (`user` / `staff` / `admin`); `status` = `active` / `disabled` |
+| `guitars` | `Guitar` | Guitars and accessories; `item_code` is unique; `created_by` → `users` (who added it) |
 | `orders` | `CustomerOrder` | `ORDER` is a reserved SQL word, so the class has a different name; `payment_verified_by` → `users` |
 | `order_items` | `OrderItem` | One row per product in an order, with the price at the time of purchase |
 | `cart_items` | `CartItem` | Saved cart lines (one row per user and product) |
@@ -122,19 +153,21 @@ Tables follow the project ERD (see the ERD in the course submission):
 ```
 src/
   Controller/      one controller per page (Home = dashboard, Product, Order, Gcash,
-                   Report, Customer, Settings, Registration, Login)
+                   Report, Customer, User, Account, Registration, Login)
   Entity/          the 6 tables above
   Enum/            fixed lists: order status, payment method, availability, user role
-  Form/            GuitarType, RegistrationFormType, ChangePasswordFormType
+  Form/            GuitarType, RegistrationFormType, UserEditType, AdminResetPasswordType,
+                   ChangePasswordFormType
   Repository/      database queries (QueryBuilder), e.g. findLowStock(), getSalesBetween()
-  Security/        LoginAuthenticator, AdminUserChecker (only role = admin may log in)
+  Security/        LoginAuthenticator, StaffUserChecker (active staff/admins only),
+                   AccessDeniedHandler, Voter/GuitarVoter (own records only)
   Service/         OrderWorkflow (order status rules), SalesReport (report numbers)
   Twig/            sidebar badge counts, links to the store
   DataFixtures/    the store's data, converted to the ERD
 templates/
   base.html.twig   layout: sidebar + page header
   partials/        sidebar, icons, order pieces shared by several pages
-  home/ product/ order/ gcash/ report/ customer/ settings/ registration/ security/
+  home/ product/ order/ gcash/ report/ customer/ user/ account/ registration/ security/
 migrations/        the SQL that creates the tables
 compose.yaml       Docker: MySQL, phpMyAdmin, Mailpit
 ```
@@ -146,7 +179,7 @@ compose.yaml       Docker: MySQL, phpMyAdmin, Mailpit
 | Creating controllers | `HomeController` (served at `/dashboard`), sidebar in `templates/partials/sidebar.html.twig`, layout in `base.html.twig` |
 | Entity CRUD | 6 entities with relations, migration, create / read / update / delete for products |
 | Form manipulation & repository | Add-product form drawn field by field in a popup (`product/index.html.twig`), custom QueryBuilder methods in `src/Repository/` |
-| User entity, login & register | `User` entity, `LoginAuthenticator`, logout, remember me, `RegistrationController` + `RegistrationFormType` (staff accounts, hashed passwords) |
+| User entity, login & register | `User` entity, `LoginAuthenticator`, logout, remember me, `RegistrationController` + `RegistrationFormType` (staff and admin accounts, hashed passwords), roles and access control |
 
 ## Troubleshooting
 

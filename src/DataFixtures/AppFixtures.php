@@ -10,8 +10,10 @@ use App\Enum\Availability;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentMethod;
 use App\Enum\UserRole;
+use App\Enum\UserStatus;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
  * Fills the database with Shan's Guitar data.
@@ -33,11 +35,28 @@ use Doctrine\Persistence\ObjectManager;
  *
  * Note: order numbers are renumbered 1, 2, 3... because the database
  * gives out new ids. The dates, totals, statuses and items are unchanged.
+ *
+ * Demo accounts for the roles (Final Project rubric):
+ *   - Shan (admin)  : same password as the old store admin
+ *   - Mika Reyes    : STAFF, active    -> mika@shansguitar.com  / staff12345
+ *   - Paolo Cruz    : STAFF, disabled  -> paolo@shansguitar.com / staff12345 (cannot log in)
+ * Products are owned by Shan, except two accessories added by Mika, so
+ * "staff can edit only their own records" can be shown in the demo.
  */
 final class AppFixtures extends Fixture
 {
     /** Set to false to load ONLY the real data, without the demo orders. */
     private const LOAD_DEMO_ORDERS = true;
+
+    /** Password of the two demo staff accounts (change it after the demo). */
+    private const DEMO_STAFF_PASSWORD = 'staff12345';
+
+    /** Products added by the demo staff member (everything else: the admin). */
+    private const ADDED_BY_STAFF = ['SG-0014', 'SG-0015'];
+
+    public function __construct(private readonly UserPasswordHasherInterface $passwordHasher)
+    {
+    }
 
     public function load(ObjectManager $manager): void
     {
@@ -50,9 +69,11 @@ final class AppFixtures extends Fixture
                 ->setName($row['name'])
                 ->setEmail($row['email'])
                 ->setPhone($row['phone'])
-                ->setPassword($row['password'])
                 ->setRole($row['role'])
+                ->setStatus($row['status'] ?? UserStatus::Active)
                 ->setCreatedAt($row['created_at']);
+            // real accounts keep their existing hash; demo staff get a freshly hashed password
+            $user->setPassword($row['password'] ?? $this->passwordHasher->hashPassword($user, self::DEMO_STAFF_PASSWORD));
             $manager->persist($user);
             $users[$key] = $user;
         }
@@ -75,7 +96,8 @@ final class AppFixtures extends Fixture
                 ->setIsNew(false)
                 ->setAvailability($row[9])
                 ->setCreatedAt($this->utc($row[10]))
-                ->setUpdatedAt($this->utc($row[11]));
+                ->setUpdatedAt($this->utc($row[11]))
+                ->setCreatedBy(in_array($row[0], self::ADDED_BY_STAFF, true) ? $users['mika'] : $users['shan']);
             $manager->persist($guitar);
             $guitars[$row[0]] = $guitar;
         }
@@ -188,6 +210,22 @@ final class AppFixtures extends Fixture
                 'password' => '$2y$12$Pi0VVrSIpXLE2QscECJml.DfBda/dwsJ2Umd4x.EHonvpvJaEFNJa',
                 'role' => UserRole::Admin,
                 'created_at' => $this->utc('2026-09-12 06:39:09'),
+            ],
+            // Demo staff accounts (no 'password' key: hashed from DEMO_STAFF_PASSWORD)
+            'mika' => [
+                'name' => 'Mika Reyes',
+                'email' => 'mika@shansguitar.com',
+                'phone' => '09171234567',
+                'role' => UserRole::Staff,
+                'created_at' => $this->local('2026-10-05 09:00:00'),
+            ],
+            'paolo' => [
+                'name' => 'Paolo Cruz',
+                'email' => 'paolo@shansguitar.com',
+                'phone' => null,
+                'role' => UserRole::Staff,
+                'status' => UserStatus::Disabled,
+                'created_at' => $this->local('2026-10-08 09:00:00'),
             ],
         ];
     }

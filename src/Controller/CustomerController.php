@@ -9,6 +9,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Customers page: everyone who signed up on the store (role = 'user'),
@@ -16,6 +17,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * profile on the store.
  */
 #[Route('/dashboard/customers')]
+#[IsGranted('ROLE_STAFF')]
 final class CustomerController extends AbstractController
 {
     #[Route(name: 'app_customer_index', methods: ['GET'])]

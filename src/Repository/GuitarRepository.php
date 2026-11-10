@@ -42,6 +42,8 @@ class GuitarRepository extends ServiceEntityRepository
     public function search(?string $query = null, ?string $category = null): array
     {
         $qb = $this->createQueryBuilder('g')
+            ->leftJoin('g.createdBy', 'u')
+            ->addSelect('u')
             ->orderBy('g.name', 'ASC');
 
         if ($query !== null && trim($query) !== '') {

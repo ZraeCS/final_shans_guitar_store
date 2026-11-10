@@ -1,20 +1,25 @@
 {% import 'partials/icons.html.twig' as icons %}
 
 {# Which page are we on? Used to highlight the active link. #}
-{% set current = app.request.attributes.get('_route') %}
+{% set current = app.request.attributes.get('_route') ?? '' %}
+{% set is_admin = is_granted('ROLE_ADMIN') %}
 
 {#
-    Sidebar links.
-    badge        = small number bubble, counted live from the database
-                   by src/Twig/AdminStatsExtension.php
+    Sidebar links, shown BY ROLE (the rubric's "role-based menu display"):
+      admin_only: true -> only admins see the link
+    Hiding a link is only for convenience: the pages themselves are protected
+    in security.yaml and in each controller (#[IsGranted]).
+
+    badge = small number bubble, counted live by src/Twig/AdminStatsExtension.php
 #}
 {% set nav = [
-    { label: 'Dashboard',        route: 'app_home',          icon: 'dashboard', section: 'app_home' },
-    { label: 'Products & Stock', route: 'app_product_index', icon: 'package',   section: 'app_product' },
-    { label: 'Orders',           route: 'app_order_index',   icon: 'orders',    section: 'app_order',   badge: pending_orders_count() },
-    { label: 'GCash Payments',   route: 'app_gcash_index',   icon: 'wallet',    section: 'app_gcash',   badge: gcash_to_verify_count() },
-    { label: 'Sales Reports',    route: 'app_report_index',   icon: 'chart',     section: 'app_report' },
-    { label: 'Customers',        route: 'app_customer_index', icon: 'users',     section: 'app_customer' },
+    { label: 'Dashboard',        route: 'app_home',           icon: 'dashboard', section: 'app_home',     admin_only: true },
+    { label: 'Products & Stock', route: 'app_product_index',  icon: 'package',   section: 'app_product',  admin_only: false },
+    { label: 'Orders',           route: 'app_order_index',    icon: 'orders',    section: 'app_order',    admin_only: false, badge: pending_orders_count() },
+    { label: 'GCash Payments',   route: 'app_gcash_index',    icon: 'wallet',    section: 'app_gcash',    admin_only: false, badge: gcash_to_verify_count() },
+    { label: 'Sales Reports',    route: 'app_report_index',   icon: 'chart',     section: 'app_report',   admin_only: true },
+    { label: 'Customers',        route: 'app_customer_index', icon: 'users',     section: 'app_customer', admin_only: false },
+    { label: 'Users',            route: 'app_user_index',     icon: 'shield',    section: 'app_user',     admin_only: true, also: 'app_register' },
 ] %}
 
 {% set link_base = 'flex shrink-0 items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-honey' %}
@@ -22,28 +27,29 @@
 <aside class="bg-ebony text-parchment lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col">
     {# Logo: "shan's" bold italic with an amber 's, "guitar" light #}
     <div class="px-6 pb-4 pt-6 lg:pb-8 lg:pt-8">
-        <a href="{{ path('app_home') }}" class="font-display text-2xl leading-none text-parchment focus-visible:outline-2 focus-visible:outline-honey">
+        <a href="{{ path('app_root') }}" class="font-display text-2xl leading-none text-parchment focus-visible:outline-2 focus-visible:outline-honey">
             <span class="font-bold italic">shan<span class="text-honey">’s</span></span>
             <span class="font-light">guitar</span>
         </a>
-        <p class="mt-1.5 text-xs text-parchment/50">Admin panel</p>
+        <p class="mt-1.5 text-xs text-parchment/50">{{ is_admin ? 'Admin panel' : 'Staff panel' }}</p>
     </div>
 
     <nav aria-label="Admin" class="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-1 lg:flex-col lg:overflow-visible lg:pb-0">
         {% for item in nav %}
-            {# active = this page, or one of its sub pages (app_product_edit belongs to app_product) #}
-            {% set active = item.section is defined and (current ?? '') starts with item.section %}
-            <a href="{{ item.route ? path(item.route) : '#' }}"
-               {% if active %}aria-current="page"{% endif %}
-               class="{{ link_base }} {{ active ? 'bg-honey text-white' : 'text-parchment/75 hover:bg-white/10 hover:text-parchment' }}">
-                {{ icons.icon(item.icon) }}
-                <span class="whitespace-nowrap">{{ item.label }}</span>
-                {% if item.badge is defined and item.badge > 0 %}
-                    <span class="ml-auto grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-bold {{ active ? 'bg-white text-honey-deep' : 'bg-honey text-white' }}">
-                        {{ item.badge }}
-                    </span>
-                {% endif %}
-            </a>
+            {% if is_admin or not item.admin_only %}
+                {% set active = current starts with item.section or current == (item.also ?? '-') %}
+                <a href="{{ path(item.route) }}"
+                   {% if active %}aria-current="page"{% endif %}
+                   class="{{ link_base }} {{ active ? 'bg-honey text-white' : 'text-parchment/75 hover:bg-white/10 hover:text-parchment' }}">
+                    {{ icons.icon(item.icon) }}
+                    <span class="whitespace-nowrap">{{ item.label }}</span>
+                    {% if item.badge is defined and item.badge > 0 %}
+                        <span class="ml-auto grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-bold {{ active ? 'bg-white text-honey-deep' : 'bg-honey text-white' }}">
+                            {{ item.badge }}
+                        </span>
+                    {% endif %}
+                </a>
+            {% endif %}
         {% endfor %}
     </nav>
 
@@ -53,12 +59,11 @@
             {{ icons.icon('external') }}
             <span>View store</span>
         </a>
-        {# Settings stays highlighted on "Add staff account" too #}
-        {% set settings_active = current in ['app_settings', 'app_register'] %}
-        <a href="{{ path('app_settings') }}" {% if settings_active %}aria-current="page"{% endif %}
-           class="{{ link_base }} {{ settings_active ? 'bg-honey text-white' : 'text-parchment/75 hover:bg-white/10 hover:text-parchment' }}">
+        {% set account_active = current starts with 'app_account' %}
+        <a href="{{ path('app_account') }}" {% if account_active %}aria-current="page"{% endif %}
+           class="{{ link_base }} {{ account_active ? 'bg-honey text-white' : 'text-parchment/75 hover:bg-white/10 hover:text-parchment' }}">
             {{ icons.icon('settings') }}
-            <span>Settings</span>
+            <span>My account</span>
         </a>
         <a href="{{ path('app_logout') }}" class="{{ link_base }} text-parchment/75 hover:bg-white/10 hover:text-parchment">
             {{ icons.icon('logout') }}

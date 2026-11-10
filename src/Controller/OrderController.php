@@ -12,12 +12,14 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Orders page + the actions behind every order button
  * (confirm, ship, deliver, cancel, verify GCash).
  */
 #[Route('/dashboard/orders')]
+#[IsGranted('ROLE_STAFF')]
 final class OrderController extends AbstractController
 {
     public function __construct(private readonly OrderWorkflow $workflow)

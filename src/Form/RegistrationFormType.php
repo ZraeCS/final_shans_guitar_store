@@ -3,9 +3,11 @@
 namespace App\Form;
 
 use App\Entity\User;
+use App\Enum\UserRole;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
+use Symfony\Component\Form\Extension\Core\Type\EnumType;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
 use Symfony\Component\Form\Extension\Core\Type\RepeatedType;
 use Symfony\Component\Form\Extension\Core\Type\TelType;
@@ -17,9 +19,9 @@ use Symfony\Component\Validator\Constraints\Length;
 use Symfony\Component\Validator\Constraints\NotBlank;
 
 /**
- * Registration form for a new STAFF account (same structure as the
+ * Registration form for a new STAFF or ADMIN account (same structure as the
  * professor's RegistrationFormType from `make:registration-form`):
- *   - the User fields (name, email, phone instead of username)
+ *   - the User fields (name, email, phone instead of username) + the role
  *   - plainPassword: NOT mapped to the User; the controller hashes it
  *   - a checkbox that must be ticked (IsTrue), like his "agreeTerms"
  */
@@ -32,6 +34,13 @@ class RegistrationFormType extends AbstractType
             ->add('name', TextType::class, ['empty_data' => ''])
             ->add('email', EmailType::class, ['empty_data' => ''])
             ->add('phone', TelType::class, ['required' => false])
+            // Admin or Staff (customers sign up on the store)
+            ->add('role', EnumType::class, [
+                'class' => UserRole::class,
+                'choices' => [UserRole::Staff, UserRole::Admin],
+                'choice_label' => fn (UserRole $r): string => $r->label(),
+                'expanded' => true,
+            ])
             ->add('confirmStaff', CheckboxType::class, [
                 'mapped' => false,
                 'constraints' => [

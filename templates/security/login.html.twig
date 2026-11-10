@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Admin Log In · Shan's Guitar{% endblock %}
+{% block title %}Staff Log In · Shan's Guitar{% endblock %}
 
 {#
     Same look as the store's login page (cream background, rounded card,
@@ -25,8 +25,8 @@
     <main class="grid flex-1 place-items-center bg-[radial-gradient(ellipse_at_top,_#F5E6C8_0%,_#FDF3E0_60%)] px-5 py-12">
         <form method="post" class="w-full max-w-sm rounded-3xl border border-ebony/10 bg-[#FFFBF3] p-8 shadow-xl shadow-honey/10">
             <p class="text-xs font-bold uppercase tracking-[0.18em] text-honey-deep">Staff access</p>
-            <h1 class="mt-2 font-display text-4xl font-bold leading-tight">Admin <span class="font-normal italic">Log In</span></h1>
-            <p class="mt-1 text-sm text-ebony/65">Staff accounts manage inventory and orders.</p>
+            <h1 class="mt-2 font-display text-4xl font-bold leading-tight">Staff <span class="font-normal italic">Log In</span></h1>
+            <p class="mt-1 text-sm text-ebony/65">For Shan’s Guitar staff and administrators.</p>
 
             <hr class="my-6 border-ebony/10">
 
@@ -60,11 +60,11 @@
 
             <button type="submit"
                     class="mt-6 w-full rounded-full bg-honey px-6 py-3 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-honey-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-honey">
-                Log in as admin
+                Log in
             </button>
 
             <p class="mt-5 rounded-xl border border-ebony/10 bg-sand/40 px-4 py-3 text-xs leading-relaxed text-ebony/75">
-                Staff accounts only. This opens the admin panel.
+                Staff and admin accounts only. This opens the staff panel.
                 Are you a customer? <a href="{{ store_url('auth/login.php') }}" class="font-bold text-honey-deep underline-offset-2 hover:underline">Log in on the store</a>.
             </p>
         </form>

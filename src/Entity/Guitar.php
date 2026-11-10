@@ -82,6 +82,16 @@ class Guitar
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $updatedAt = null;
 
+    /**
+     * Who added this product (FK created_by). Staff may edit or delete only
+     * the products they added (see App\Security\Voter\GuitarVoter); admins
+     * may change any product. If that account is deleted, the product stays
+     * and this becomes NULL.
+     */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(name: 'created_by', nullable: true, onDelete: 'SET NULL')]
+    private ?User $createdBy = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
@@ -256,6 +266,18 @@ class Guitar
     public function setUpdatedAt(?\DateTimeImmutable $updatedAt): static
     {
         $this->updatedAt = $updatedAt;
+
+        return $this;
+    }
+
+    public function getCreatedBy(): ?User
+    {
+        return $this->createdBy;
+    }
+
+    public function setCreatedBy(?User $createdBy): static
+    {
+        $this->createdBy = $createdBy;
 
         return $this;
     }

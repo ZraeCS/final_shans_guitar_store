@@ -42,10 +42,11 @@
 
                         {# The admin who is signed in (app.user = the logged-in User entity) #}
                         {% if app.user %}
-                            <div class="flex items-center gap-3 rounded-full bg-parchment py-1.5 pl-1.5 pr-4 ring-1 ring-ebony/10">
+                            <a href="{{ path('app_account') }}" class="flex items-center gap-3 rounded-full bg-parchment py-1.5 pl-1.5 pr-3 ring-1 ring-ebony/10 hover:ring-honey/50">
                                 <span class="grid h-8 w-8 place-items-center rounded-full bg-honey font-display text-sm font-bold text-white">{{ app.user.initial }}</span>
                                 <span class="text-sm font-semibold">{{ app.user.name }}</span>
-                            </div>
+                                <span class="rounded-full bg-sand px-2 py-0.5 text-[11px] font-bold text-honey-deep">{{ app.user.role.label }}</span>
+                            </a>
                         {% endif %}
                     </header>
 

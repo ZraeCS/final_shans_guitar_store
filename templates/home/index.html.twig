@@ -44,6 +44,30 @@
         </div>
     </section>
 
+    {# ---------- System overview: total users, total staff, total records ---------- #}
+    <section aria-label="System overview" class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <a href="{{ path('app_user_index') }}" class="rounded-2xl bg-parchment p-5 ring-1 ring-ebony/10 transition hover:ring-honey/50">
+            <p class="text-sm font-semibold text-ebony/60">Total users</p>
+            <p class="mt-2 font-display text-3xl font-bold">{{ totals.users }}</p>
+            <p class="mt-1 text-sm text-ebony/60">{{ totals.customers }} customers · {{ totals.staff + totals.admins }} staff accounts</p>
+        </a>
+        <a href="{{ path('app_user_index', {role: 'staff'}) }}" class="rounded-2xl bg-parchment p-5 ring-1 ring-ebony/10 transition hover:ring-honey/50">
+            <p class="text-sm font-semibold text-ebony/60">Total staff</p>
+            <p class="mt-2 font-display text-3xl font-bold">{{ totals.staff }}</p>
+            <p class="mt-1 text-sm text-ebony/60">plus {{ totals.admins }} admin{{ totals.admins == 1 ? '' : 's' }}</p>
+        </a>
+        <a href="{{ path('app_product_index') }}" class="rounded-2xl bg-parchment p-5 ring-1 ring-ebony/10 transition hover:ring-honey/50">
+            <p class="text-sm font-semibold text-ebony/60">Product records</p>
+            <p class="mt-2 font-display text-3xl font-bold">{{ totals.products }}</p>
+            <p class="mt-1 text-sm text-ebony/60">guitars and accessories</p>
+        </a>
+        <a href="{{ path('app_order_index') }}" class="rounded-2xl bg-parchment p-5 ring-1 ring-ebony/10 transition hover:ring-honey/50">
+            <p class="text-sm font-semibold text-ebony/60">Order records</p>
+            <p class="mt-2 font-display text-3xl font-bold">{{ totals.orders }}</p>
+            <p class="mt-1 text-sm text-ebony/60">all statuses</p>
+        </a>
+    </section>
+
     {# ---------- Restock alert (only shows when something is low) ---------- #}
     {% if low_stock is not empty %}
         <div role="status" class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-honey/40 bg-honey/10 px-5 py-3 text-sm">

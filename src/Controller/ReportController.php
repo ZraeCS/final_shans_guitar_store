@@ -7,12 +7,14 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Sales Reports: revenue, orders, best sellers and payment methods
  * for a chosen period. The adding-up happens in App\Service\SalesReport.
  */
 #[Route('/dashboard/reports')]
+#[IsGranted('ROLE_ADMIN')]
 final class ReportController extends AbstractController
 {
     public function __construct(private readonly SalesReport $salesReport)

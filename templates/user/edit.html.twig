@@ -1,0 +1,105 @@
+{% extends 'base.html.twig' %}
+{% import 'partials/icons.html.twig' as icons %}
+
+{% block title %}Edit {{ account.name }} · Shan's Guitar Admin{% endblock %}
+
+{% block page_title %}Edit account{% endblock %}
+{% block page_subtitle %}{{ account.name }} · {{ account.role.label }} · created {{ account.createdAt|date('M j, Y') }}{% endblock %}
+
+{% block body %}
+    {% set input = 'mt-1.5 block w-full rounded-xl border border-ebony/15 bg-white/70 px-3.5 py-2.5 text-sm outline-none transition focus:border-honey focus:ring-2 focus:ring-honey/30 disabled:bg-sand/50 disabled:text-ebony/50' %}
+    {% set label = 'block text-sm font-semibold' %}
+    {% set error = 'mt-1 text-xs font-semibold text-red-700' %}
+    {% set btn = 'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-honey' %}
+
+    <a href="{{ path('app_user_index') }}" class="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-honey-deep underline-offset-4 hover:underline">
+        {{ icons.icon('back', 'h-4 w-4') }} Back to Users
+    </a>
+
+    <div class="grid gap-6 xl:grid-cols-[1fr_24rem]">
+        {# ---------- Account details: name, email, phone, role, status ---------- #}
+        <section class="rounded-2xl bg-parchment p-6 ring-1 ring-ebony/10 sm:p-8">
+            <h2 class="font-display text-xl font-bold">Account details</h2>
+            {% if is_self %}
+                <p class="mt-1 text-sm text-ebony/60">This is your own account: your role and status are locked so you can’t lock yourself out.</p>
+            {% endif %}
+
+            {{ form_start(form, {'attr': {'class': 'mt-5'}}) }}
+                {{ form_errors(form) }}
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                        {{ form_label(form.name, 'Full name', {'label_attr': {'class': label}}) }}
+                        {{ form_widget(form.name, {'attr': {'class': input}}) }}
+                        <div class="{{ error }}">{{ form_errors(form.name) }}</div>
+                    </div>
+                    <div>
+                        {{ form_label(form.email, 'Email (used to log in)', {'label_attr': {'class': label}}) }}
+                        {{ form_widget(form.email, {'attr': {'class': input}}) }}
+                        <div class="{{ error }}">{{ form_errors(form.email) }}</div>
+                    </div>
+                    <div>
+                        {{ form_label(form.phone, 'Phone (optional)', {'label_attr': {'class': label}}) }}
+                        {{ form_widget(form.phone, {'attr': {'class': input}}) }}
+                        <div class="{{ error }}">{{ form_errors(form.phone) }}</div>
+                    </div>
+                    <div>
+                        {{ form_label(form.role, 'Role', {'label_attr': {'class': label}}) }}
+                        {{ form_widget(form.role, {'attr': {'class': input}}) }}
+                        <div class="{{ error }}">{{ form_errors(form.role) }}</div>
+                    </div>
+                    <div>
+                        {{ form_label(form.status, 'Status', {'label_attr': {'class': label}}) }}
+                        {{ form_widget(form.status, {'attr': {'class': input}}) }}
+                        <div class="{{ error }}">{{ form_errors(form.status) }}</div>
+                    </div>
+                </div>
+                <p class="mt-4 text-xs text-ebony/55">Customer: store only · Staff: products (own), orders, GCash, customers · Admin: everything, including this page. A disabled account can’t log in, but its orders and records stay.</p>
+                {{ form_rest(form) }}
+                <div class="mt-6 flex justify-end gap-2">
+                    <a href="{{ path('app_user_index') }}" class="{{ btn }} ring-1 ring-ebony/20 hover:bg-sand">Cancel</a>
+                    <button type="submit" class="{{ btn }} bg-honey text-white hover:bg-honey-deep">Save changes</button>
+                </div>
+            {{ form_end(form) }}
+        </section>
+
+        <div class="space-y-6">
+            {# ---------- Reset password ---------- #}
+            <section class="rounded-2xl bg-parchment p-6 ring-1 ring-ebony/10">
+                <h2 class="font-display text-xl font-bold">Reset password</h2>
+                <p class="mt-1 text-sm text-ebony/60">Sets a new password for {{ account.name }}. Tell them the new password privately.</p>
+                {{ form_start(password_form, {'attr': {'class': 'mt-4 space-y-3'}}) }}
+                    <div>
+                        {{ form_label(password_form.newPassword.first, 'New password', {'label_attr': {'class': label}}) }}
+                        {{ form_widget(password_form.newPassword.first, {'attr': {'class': input, 'placeholder': 'At least 8 characters'}}) }}
+                    </div>
+                    <div>
+                        {{ form_label(password_form.newPassword.second, 'Repeat new password', {'label_attr': {'class': label}}) }}
+                        {{ form_widget(password_form.newPassword.second, {'attr': {'class': input}}) }}
+                    </div>
+                    {{ form_rest(password_form) }}
+                    <button type="submit" class="{{ btn }} w-full justify-center bg-ebony text-parchment hover:bg-ebony/85">Reset password</button>
+                {{ form_end(password_form) }}
+            </section>
+
+            {# ---------- Disable / delete ---------- #}
+            {% if not is_self %}
+                <section class="rounded-2xl border border-red-200 bg-red-50/60 p-6">
+                    <h2 class="font-display text-xl font-bold text-red-900">Disable or delete</h2>
+                    <p class="mt-1 text-sm text-red-900/70">Disabling keeps the account and its history but blocks logging in. Deleting removes it for good (accounts with orders can only be disabled).</p>
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        <form method="post" action="{{ path('app_user_status', {id: account.id}) }}"
+                              onsubmit="return confirm('{{ account.active ? 'Disable' : 'Enable' }} the account of {{ account.name|e('js') }}?');">
+                            <input type="hidden" name="_token" value="{{ csrf_token('user' ~ account.id) }}">
+                            <button type="submit" class="{{ btn }} ring-1 ring-red-300 bg-white text-red-800 hover:bg-red-100">{{ account.active ? 'Disable account' : 'Enable account' }}</button>
+                        </form>
+                        <form method="post" action="{{ path('app_user_delete', {id: account.id}) }}"
+                              onsubmit="return confirm('Delete the account of {{ account.name|e('js') }}?\n\nThis can’t be undone.');">
+                            <input type="hidden" name="_token" value="{{ csrf_token('delete-user' ~ account.id) }}">
+                            <button type="submit" class="{{ btn }} bg-red-700 text-white hover:bg-red-800">Delete account</button>
+                        </form>
+                    </div>
+                </section>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
