@@ -1,3 +1,17 @@
+# Shan's Guitar - the whole system in Docker.
+#   docker compose up -d --build    (first time, or after changing a Dockerfile)
+#   docker compose up -d            (every other day)
+#
+#   Store        http://localhost:8080
+#   Staff panel  http://127.0.0.1:8000
+#   phpMyAdmin   http://localhost:8081
+#   Mailpit      http://localhost:8025
+#
+# The store's code is expected in a folder NEXT TO this project:
+#   C:\shans_guitar1\shans_guitar          <- this project (admin)
+#   C:\shans_guitar1\shans_guitar_store    <- the store
+# (to use another place, set STORE_PATH, see README.md)
+
 services:
   shansguitar_mysql:
     image: mysql:latest
@@ -41,9 +55,59 @@ services:
     networks:
       - shansguitar_network
 
+  # ---------- the customer store (plain PHP), replaces XAMPP's Apache ----------
+  shansguitar_store:
+    build: ./docker/store
+    image: shansguitar-store
+    container_name: shansguitar_store
+    restart: unless-stopped
+    environment:
+      # read by the store's database/config.php
+      DB_HOST: shansguitar_mysql
+      DB_PORT: "3306"
+      MAIL_HOST: shansguitar_mailpit
+      MAIL_PORT: "1025"
+      MAIL_INBOX_URL: http://localhost:8025
+      SITE_URL: http://localhost:8080/shans_guitar
+      ADMIN_PANEL_URL: http://127.0.0.1:8000/login
+    ports:
+      - "8080:80"
+    volumes:
+      - ${STORE_PATH:-../shans_guitar_store}:/var/www/html/shans_guitar
+    depends_on:
+      - shansguitar_mysql
+      - shansguitar_mailpit
+    networks:
+      - shansguitar_network
+
+  # ---------- the staff panel (Symfony), replaces "symfony server:start" ----------
+  shansguitar_admin:
+    build: ./docker/admin
+    image: shansguitar-admin
+    container_name: shansguitar_admin
+    restart: unless-stopped
+    environment:
+      APP_ENV: dev
+      # these win over the values in .env
+      DATABASE_URL: "mysql://root:root@shansguitar_mysql:3306/shansguitar?serverVersion=8.4&charset=utf8mb4"
+      STORE_DIR: /var/www/store
+      STORE_BASE_URL: http://localhost:8080/shans_guitar
+    ports:
+      - "8000:8080"
+    volumes:
+      - ./:/var/www/admin                                   # your code (edit it in VS Code as usual)
+      - shansguitar_admin_var:/var/www/admin/var            # cache and logs stay inside Docker (faster)
+      - ${STORE_PATH:-../shans_guitar_store}:/var/www/store # product photos are saved into the store
+    depends_on:
+      - shansguitar_mysql
+    networks:
+      - shansguitar_network
+
 volumes:
   shansguitar_db_data:
     name: shansguitar_db_data
+  shansguitar_admin_var:
+    name: shansguitar_admin_var
 
 networks:
   shansguitar_network:

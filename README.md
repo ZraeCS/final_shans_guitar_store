@@ -12,10 +12,15 @@ It shares **one database** with the customer website (the PHP store,
 an order placed in the store appears here immediately, and every change made here
 (price, stock, order status, GCash verification) shows up in the store right away.
 
+Everything runs in Docker: one command starts all five containers.
+
 ```
-Customer's browser ──> Store (XAMPP, PHP)  ──┐
-                                             ├──> MySQL (Docker)  +  Mailpit (Docker)
-Admin's browser   ──> Admin (Symfony)      ──┘
+                     Docker (network: shansguitar_network)
+Customer's browser ──> shansguitar_store   (Apache + PHP 8.4, the store)   ──┐
+                                                                           ├──> shansguitar_mysql (one database)
+Staff's browser    ──> shansguitar_admin   (Apache + PHP 8.4, Symfony)     ──┘
+                       shansguitar_phpmyadmin (database viewer)
+                       shansguitar_mailpit    (catches the store's emails)
 ```
 
 ## Features
@@ -64,35 +69,55 @@ Docker Compose (MySQL, phpMyAdmin, Mailpit)
 
 ## Requirements
 
-- PHP 8.4 or newer with the `pdo_mysql` extension (XAMPP's PHP works)
-- [Composer](https://getcomposer.org) and the [Symfony CLI](https://symfony.com/download)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- XAMPP's **Apache**, to run the customer store (only Apache; XAMPP's MySQL is not used)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — that's all. PHP, Apache, Composer and
+  MySQL all run inside the containers (no XAMPP needed).
+- Git, to download the two repositories.
 
 ## Installation
 
-```powershell
-git clone https://github.com/ZraeCS/final_shans_guitar_store.git
-cd final_shans_guitar_store
+The two repositories must sit **side by side**:
 
-composer install                               # downloads the libraries into vendor/
-docker compose up -d                           # starts MySQL, phpMyAdmin and Mailpit
-symfony console doctrine:migrations:migrate    # creates the tables (answer yes)
-symfony console doctrine:fixtures:load         # fills them with the store's data (answer yes)
-symfony console tailwind:build                 # builds the CSS
-symfony server:start                           # http://127.0.0.1:8000
+```
+C:\shans_guitar1\shans_guitar          <- this project (staff panel + compose.yaml)
+C:\shans_guitar1\shans_guitar_store    <- the customer store
 ```
 
-Wait about 20 seconds after `docker compose up -d` the first time: MySQL needs a moment to start.
+```powershell
+cd C:\shans_guitar1
+git clone https://github.com/ZraeCS/final_shans_guitar_store.git shans_guitar
+git clone https://github.com/ZraeCS/shans_guitar_store_web_app.git shans_guitar_store
+cd shans_guitar
 
-While working on the design, keep `symfony console tailwind:build --watch` running in a second terminal.
+docker compose up -d --build                                                   # builds and starts all 5 containers
+docker compose exec shansguitar_admin composer install                         # downloads the PHP libraries
+docker compose exec shansguitar_admin php bin/console doctrine:migrations:migrate -n
+docker compose exec shansguitar_admin php bin/console doctrine:fixtures:load -n
+docker compose exec shansguitar_admin php bin/console tailwind:build           # builds the CSS
+```
+
+Wait about 20 seconds after the first `docker compose up` before migrating: MySQL needs a moment to start.
+From then on, `docker compose up -d` starts everything and `docker compose stop` stops it.
+
+### Commands inside Docker
+
+The Symfony console runs **inside** the `shansguitar_admin` container:
+
+| Instead of | Type |
+|---|---|
+| `symfony server:start` | nothing: the panel is always running at http://127.0.0.1:8000 |
+| `symfony console <command>` | `docker compose exec shansguitar_admin php bin/console <command>` |
+| `composer <command>` | `docker compose exec shansguitar_admin composer <command>` |
+| `symfony console tailwind:build --watch` | `docker compose exec shansguitar_admin php bin/console tailwind:build` after changing a template (file watching doesn't reach into Docker on Windows) |
+
+You still edit the code in VS Code as usual: the containers read the project folders directly, so a refresh
+shows your change. Only a change to a `Dockerfile` needs `docker compose up -d --build`.
 
 ## Addresses
 
 | What | Address |
 |---|---|
-| Admin panel | http://127.0.0.1:8000/dashboard |
-| Customer store | http://localhost/shans_guitar/shop.php |
+| Staff panel | http://127.0.0.1:8000 |
+| Customer store | http://localhost:8080 |
 | phpMyAdmin (the shared database) | http://localhost:8081 |
 | Mailpit (emails sent by the store) | http://localhost:8025 |
 
@@ -115,10 +140,10 @@ Forgot a password? Use "Forgot password?" on either login page; the email arrive
 ## Rebuilding the database (drop test)
 
 ```powershell
-symfony console doctrine:database:drop --force
-symfony console doctrine:database:create
-symfony console doctrine:migrations:migrate -n
-symfony console doctrine:fixtures:load -n
+docker compose exec shansguitar_admin php bin/console doctrine:database:drop --force
+docker compose exec shansguitar_admin php bin/console doctrine:database:create
+docker compose exec shansguitar_admin php bin/console doctrine:migrations:migrate -n
+docker compose exec shansguitar_admin php bin/console doctrine:fixtures:load -n
 ```
 
 After these four commands the admin panel and the store work again with the original data.
@@ -128,9 +153,11 @@ After these four commands the admin panel and the store work again with the orig
 
 | Setting | Where | Default |
 |---|---|---|
-| Database connection | `.env` (`MYSQL_*` and `DATABASE_URL`) | root/root on 127.0.0.1:3313, database `shansguitar` |
-| Containers, ports | `compose.yaml` | MySQL 3313, phpMyAdmin 8081, Mailpit 8025 (SMTP 1025) |
-| Store address and folder | `config/services.yaml` (`STORE_BASE_URL`, `STORE_DIR`) | http://localhost/shans_guitar, C:/xampp/htdocs/shans_guitar |
+| Containers, ports, and the settings passed to both apps | `compose.yaml` | Store 8080, panel 8000, phpMyAdmin 8081, Mailpit 8025 (SMTP 1025), MySQL 3313 |
+| Container recipes | `docker/store/`, `docker/admin/` | Apache + PHP 8.4 |
+| Database connection | `DATABASE_URL` in `compose.yaml` (wins over `.env`) | root/root on `shansguitar_mysql:3306`, database `shansguitar` |
+| Store address and folder | `STORE_BASE_URL`, `STORE_DIR` in `compose.yaml` | http://localhost:8080/shans_guitar, the store folder |
+| Store folder on your computer | `STORE_PATH` environment variable | `../shans_guitar_store` (next to this project) |
 | Timezone | `src/Kernel.php` | Asia/Manila |
 
 To use other values on your computer without changing committed files, put them in `.env.local`.
@@ -185,8 +212,17 @@ compose.yaml       Docker: MySQL, phpMyAdmin, Mailpit
 
 | Problem | Fix |
 |---|---|
-| `Connection refused` / `SQLSTATE[HY000] [2002]` | Docker isn't running: start Docker Desktop, then `docker compose up -d` |
-| Page without colors | Run `symfony console tailwind:build`, then refresh with Ctrl+F5 |
-| Product photos missing | Start Apache in XAMPP (photos come from the store's folder) |
-| No email in Mailpit | Check that `shansguitar_mailpit` is listed by `docker ps` |
-| Strange errors after pulling changes | `composer install`, then `symfony console cache:clear` |
+| A page doesn't load at all | Start Docker Desktop, then `docker compose up -d`; `docker ps` should list 5 containers |
+| `port is already allocated` (8000) | Something else uses port 8000, usually an old `symfony server:start`: run `symfony server:stop` or close that terminal |
+| `port is already allocated` (8080) | Another web server uses 8080; stop it (or XAMPP's Apache if you changed its port) |
+| Error "Built Tailwind CSS file does not exist" / page without colors | `docker compose exec shansguitar_admin php bin/console tailwind:build`, then Ctrl+F5 |
+| Store shows "Could not connect to the database" | Wait 20 seconds after starting (MySQL is starting), then refresh |
+| The store page is empty / 404 | The store folder isn't at `..\shans_guitar_store`; move it there (or set `STORE_PATH`) and run `docker compose up -d` |
+| See what went wrong inside a container | `docker compose logs shansguitar_admin` (or `shansguitar_store`) |
+| Strange errors after pulling changes | `docker compose exec shansguitar_admin composer install`, then `... php bin/console cache:clear` |
+
+### Running without Docker (fallback)
+
+The code still works the old way: the store in XAMPP (`htdocs\shans_guitar`, uses 127.0.0.1:3313) and the panel with
+`symfony server:start`, as long as the database containers are running. The settings fall back to those values
+automatically when Docker doesn't provide them.
