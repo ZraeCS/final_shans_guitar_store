@@ -57,8 +57,12 @@ final class HomeController extends AbstractController
         ]);
     }
 
-    /** Home page by role: admins -> dashboard, staff -> Products & Stock. */
-    #[Route('/', name: 'app_root')]
+    /**
+     * Home page by role: admins -> dashboard, staff -> Products & Stock.
+     * It lives at /panel because, behind the front door, "/" can belong to the
+     * store (port 8080); on port 8000 the front door sends "/" here.
+     */
+    #[Route('/panel', name: 'app_root')]
     public function root(): Response
     {
         if ($this->isGranted('ROLE_ADMIN')) {

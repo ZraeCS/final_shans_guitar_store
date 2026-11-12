@@ -5,7 +5,10 @@
 #   Store        http://localhost:8080
 #   Staff panel  http://127.0.0.1:8000
 #   phpMyAdmin   http://localhost:8081
-#   Mailpit      http://localhost:8025
+#   Mailpit      http://localhost:8080/mailpit/  (user mailpit, password in docker/proxy/Caddyfile)
+#
+# Both web apps are reached through the front door (shansguitar_proxy), which
+# gives them one address. Online: "ngrok http 8000" shares that address.
 #
 # The store's code is expected in a folder NEXT TO this project:
 #   C:\shans_guitar1\shans_guitar          <- this project (admin)
@@ -50,8 +53,10 @@ services:
     container_name: shansguitar_mailpit
     restart: unless-stopped
     ports:
-      - "8025:8025"   # the inbox, in your browser
+      - "8025:8025"   # the inbox: http://localhost:8025/mailpit/
       - "1025:1025"   # where the store sends emails
+    environment:
+      MP_WEBROOT: mailpit   # the inbox lives under /mailpit/ (behind the front door)
     networks:
       - shansguitar_network
 
@@ -67,11 +72,11 @@ services:
       DB_PORT: "3306"
       MAIL_HOST: shansguitar_mailpit
       MAIL_PORT: "1025"
-      MAIL_INBOX_URL: http://localhost:8025
-      SITE_URL: http://localhost:8080/shans_guitar
-      ADMIN_PANEL_URL: http://127.0.0.1:8000/login
-    ports:
-      - "8080:80"
+      MAIL_INBOX_URL: /mailpit/
+      # links inside emails need the full public address (PUBLIC_URL in .env when online)
+      SITE_URL: ${PUBLIC_URL:-http://localhost:8080}/shans_guitar
+      ADMIN_PANEL_URL: /login
+    # no ports here: the store is reached through the front door (8080 and 8000)
     volumes:
       - ${STORE_PATH:-../shans_guitar_store}:/var/www/html/shans_guitar
     depends_on:
@@ -87,19 +92,38 @@ services:
     container_name: shansguitar_admin
     restart: unless-stopped
     environment:
-      APP_ENV: dev
+      # production mode: no public debug pages, faster (PANEL_ENV=dev in .env to switch back)
+      APP_ENV: ${PANEL_ENV:-prod}
+      APP_DEBUG: ${PANEL_DEBUG:-0}
       # these win over the values in .env
       DATABASE_URL: "mysql://root:root@shansguitar_mysql:3306/shansguitar?serverVersion=8.4&charset=utf8mb4"
       STORE_DIR: /var/www/store
-      STORE_BASE_URL: http://localhost:8080/shans_guitar
-    ports:
-      - "8000:8080"
+      STORE_BASE_URL: /shans_guitar          # relative: works on every address
+      TRUSTED_PROXIES: 127.0.0.1,REMOTE_ADDR # the front door and ngrok
+    # no ports here: the panel is reached through the front door (8000 and 8080)
     volumes:
       - ./:/var/www/admin                                   # your code (edit it in VS Code as usual)
       - shansguitar_admin_var:/var/www/admin/var            # cache and logs stay inside Docker (faster)
       - ${STORE_PATH:-../shans_guitar_store}:/var/www/store # product photos are saved into the store
     depends_on:
       - shansguitar_mysql
+    networks:
+      - shansguitar_network
+
+  # ---------- the front door: one address for store + panel ----------
+  shansguitar_proxy:
+    image: caddy:2-alpine
+    container_name: shansguitar_proxy
+    restart: unless-stopped
+    ports:
+      - "8000:8000"   # staff panel first  -> ngrok http 8000
+      - "8080:8080"   # store first        -> http://localhost:8080
+    volumes:
+      - ./docker/proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - shansguitar_store
+      - shansguitar_admin
+      - shansguitar_mailpit
     networks:
       - shansguitar_network
 

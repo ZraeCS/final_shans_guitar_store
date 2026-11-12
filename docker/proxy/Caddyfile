@@ -1,0 +1,52 @@
+# Shan's Guitar - the "front door" (a reverse proxy)
+#
+# Gives the store and the staff panel ONE address, so ngrok can share both:
+#   port 8000 -> staff panel first   (the port ngrok shares: "ngrok http 8000")
+#   port 8080 -> store first         (for you, on your laptop)
+#   /shans_guitar/...  always goes to the store
+#   /mailpit/...       goes to the Mailpit inbox, password protected
+{
+	# ngrok connects from a private address: keep its X-Forwarded-Proto (https)
+	# so Symfony knows the visitor really uses HTTPS
+	servers {
+		trusted_proxies static private_ranges
+	}
+	admin off
+}
+
+# Mailpit inbox (reset emails), behind a password.
+# User: mailpit   Password: ShansMail2026
+# To change it: docker compose exec shansguitar_proxy caddy hash-password --plaintext "NewPassword"
+# then paste the result in place of the long code below and run: docker compose restart shansguitar_proxy
+(mailpit) {
+	handle /mailpit* {
+		basic_auth {
+			mailpit $2a$14$iOG77mfvmWE1NkLUahnoHe4hHf5DfjqeAomhDrVN7hWlmNCHJMO.W
+		}
+		reverse_proxy shansguitar_mailpit:8025
+	}
+}
+
+# ---------- port 8000: staff panel first (shared through ngrok) ----------
+:8000 {
+	import mailpit
+	redir / /panel 302
+	handle /shans_guitar* {
+		reverse_proxy shansguitar_store:80
+	}
+	handle {
+		reverse_proxy shansguitar_admin:8080
+	}
+}
+
+# ---------- port 8080: store first (for you, on your laptop) ----------
+:8080 {
+	import mailpit
+	@panel path /login /logout /panel /panel/* /dashboard /dashboard/* /assets/*
+	handle @panel {
+		reverse_proxy shansguitar_admin:8080
+	}
+	handle {
+		reverse_proxy shansguitar_store:80
+	}
+}

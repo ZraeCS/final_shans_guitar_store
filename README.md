@@ -12,10 +12,12 @@ It shares **one database** with the customer website (the PHP store,
 an order placed in the store appears here immediately, and every change made here
 (price, stock, order status, GCash verification) shows up in the store right away.
 
-Everything runs in Docker: one command starts all five containers.
+Everything runs in Docker: one command starts all six containers. A small front door (Caddy) gives the
+store and the staff panel one address, which ngrok can share online.
 
 ```
                      Docker (network: shansguitar_network)
+(both browsers go through shansguitar_proxy, the front door, on ports 8000 and 8080)
 Customer's browser ──> shansguitar_store   (Apache + PHP 8.4, the store)   ──┐
                                                                            ├──> shansguitar_mysql (one database)
 Staff's browser    ──> shansguitar_admin   (Apache + PHP 8.4, Symfony)     ──┘
@@ -92,8 +94,14 @@ docker compose up -d --build                                                   #
 docker compose exec shansguitar_admin composer install                         # downloads the PHP libraries
 docker compose exec shansguitar_admin php bin/console doctrine:migrations:migrate -n
 docker compose exec shansguitar_admin php bin/console doctrine:fixtures:load -n
-docker compose exec shansguitar_admin php bin/console tailwind:build           # builds the CSS
+docker compose exec shansguitar_admin php bin/console tailwind:build --minify  # builds the CSS
+docker compose exec shansguitar_admin php bin/console asset-map:compile        # production files in public/assets
+docker compose exec shansguitar_admin php bin/console cache:clear
 ```
+
+The panel runs in **production mode** (no debug pages). It needs a secret key in `.env.prod.local`
+(git-ignored): `APP_SECRET=` followed by 32 random hex characters, for example from
+`docker compose exec shansguitar_admin php -r "echo bin2hex(random_bytes(16));"`.
 
 Wait about 20 seconds after the first `docker compose up` before migrating: MySQL needs a moment to start.
 From then on, `docker compose up -d` starts everything and `docker compose stop` stops it.
@@ -107,7 +115,10 @@ The Symfony console runs **inside** the `shansguitar_admin` container:
 | `symfony server:start` | nothing: the panel is always running at http://127.0.0.1:8000 |
 | `symfony console <command>` | `docker compose exec shansguitar_admin php bin/console <command>` |
 | `composer <command>` | `docker compose exec shansguitar_admin composer <command>` |
-| `symfony console tailwind:build --watch` | `docker compose exec shansguitar_admin php bin/console tailwind:build` after changing a template (file watching doesn't reach into Docker on Windows) |
+| After changing a template or CSS | `… php bin/console tailwind:build --minify`, then `… php bin/console asset-map:compile`, then `… php bin/console cache:clear` |
+| After changing PHP code or config | `docker compose exec shansguitar_admin php bin/console cache:clear` |
+| Reset the demo data | `docker compose exec shansguitar_admin php bin/console doctrine:fixtures:load --env=dev` (fixtures exist only in dev) |
+| Development mode (debug toolbar) | add `PANEL_ENV=dev` and `PANEL_DEBUG=1` to `.env`, delete `public/assets`, `docker compose up -d` |
 
 You still edit the code in VS Code as usual: the containers read the project folders directly, so a refresh
 shows your change. Only a change to a `Dockerfile` needs `docker compose up -d --build`.
@@ -116,10 +127,10 @@ shows your change. Only a change to a `Dockerfile` needs `docker compose up -d -
 
 | What | Address |
 |---|---|
-| Staff panel | http://127.0.0.1:8000 |
-| Customer store | http://localhost:8080 |
+| Staff panel | http://127.0.0.1:8000 (port 8000 = panel first) |
+| Customer store | http://localhost:8080 (port 8080 = store first; `/login` there opens the panel too) |
 | phpMyAdmin (the shared database) | http://localhost:8081 |
-| Mailpit (emails sent by the store) | http://localhost:8025 |
+| Mailpit (emails sent by the store) | http://localhost:8080/mailpit/ (user `mailpit`, password `ShansMail2026`, changeable in `docker/proxy/Caddyfile`) |
 
 ## Accounts
 
@@ -137,13 +148,27 @@ editing their own records while the other products are view-only. New accounts a
 **Users → Add staff / admin**.
 Forgot a password? Use "Forgot password?" on either login page; the email arrives in Mailpit.
 
+## Online with ngrok (final exam)
+
+1. Create a free account at ngrok.com, install the ngrok CLI (for example `scoop install ngrok`),
+   and run once: `ngrok config add-authtoken <your token>`.
+2. Note your free **dev domain** on the ngrok dashboard (Domains), e.g. `your-name.ngrok-free.app`,
+   and add to `.env`: `PUBLIC_URL=https://your-name.ngrok-free.app` (used in reset-email links),
+   then `docker compose up -d`.
+3. Start everything: `docker compose up -d`, then in a second terminal: `ngrok http 8000`.
+4. Share `https://your-name.ngrok-free.app`. It opens the Staff Log In; the store is at
+   `/shans_guitar/` ("Back to the store" on the login page); the Mailpit inbox at `/mailpit/`.
+
+The free plan shows a one-time "Visit Site" warning page to new visitors. Keep the laptop on, plugged in
+and awake while the link must be reachable.
+
 ## Rebuilding the database (drop test)
 
 ```powershell
 docker compose exec shansguitar_admin php bin/console doctrine:database:drop --force
 docker compose exec shansguitar_admin php bin/console doctrine:database:create
 docker compose exec shansguitar_admin php bin/console doctrine:migrations:migrate -n
-docker compose exec shansguitar_admin php bin/console doctrine:fixtures:load -n
+docker compose exec shansguitar_admin php bin/console doctrine:fixtures:load -n --env=dev
 ```
 
 After these four commands the admin panel and the store work again with the original data.
@@ -214,8 +239,9 @@ compose.yaml       Docker: MySQL, phpMyAdmin, Mailpit
 |---|---|
 | A page doesn't load at all | Start Docker Desktop, then `docker compose up -d`; `docker ps` should list 5 containers |
 | `port is already allocated` (8000) | Something else uses port 8000, usually an old `symfony server:start`: run `symfony server:stop` or close that terminal |
+| Panel shows "Oops! An Error Occurred" | `docker compose logs --tail=30 shansguitar_admin`; often a missing `.env.prod.local` (APP_SECRET) or a cache to clear |
 | `port is already allocated` (8080) | Another web server uses 8080; stop it (or XAMPP's Apache if you changed its port) |
-| Error "Built Tailwind CSS file does not exist" / page without colors | `docker compose exec shansguitar_admin php bin/console tailwind:build`, then Ctrl+F5 |
+| Panel page without colors | `… tailwind:build --minify`, `… asset-map:compile`, `… cache:clear`, then Ctrl+F5 |
 | Store shows "Could not connect to the database" | Wait 20 seconds after starting (MySQL is starting), then refresh |
 | The store page is empty / 404 | The store folder isn't at `..\shans_guitar_store`; move it there (or set `STORE_PATH`) and run `docker compose up -d` |
 | See what went wrong inside a container | `docker compose logs shansguitar_admin` (or `shansguitar_store`) |

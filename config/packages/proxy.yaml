@@ -1,0 +1,10 @@
+# The staff panel runs behind the front door (Caddy) and, online, behind ngrok.
+# Trusting them lets Symfony see the visitor's real scheme (https), host and IP.
+# REMOTE_ADDR = whoever connects directly; in Docker that can only be the front
+# door, because the panel's own port is not published.
+parameters:
+    env(TRUSTED_PROXIES): '127.0.0.1,REMOTE_ADDR'
+
+framework:
+    trusted_proxies: '%env(TRUSTED_PROXIES)%'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-port']
